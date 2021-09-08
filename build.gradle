@@ -1,0 +1,152 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net' }
+		maven { url = 'https://maven.parchmentmc.org' }
+        maven {
+            url "https://repo.spongepowered.org/repository/maven-public/"
+            content { includeGroup "org.spongepowered" }
+        }
+        mavenCentral()
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
+        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
+        classpath 'org.parchmentmc:librarian:1.+'
+    }
+}
+
+plugins {
+    id 'org.cadixdev.licenser' version '0.6.1'
+    id 'maven-publish'
+    id 'idea'
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'org.parchmentmc.librarian.forgegradle'
+apply plugin: 'org.spongepowered.mixin'
+
+// Allow local mappings customization
+def localProperties = new File('./dev.gradle')
+localProperties.createNewFile()
+
+apply from: 'dev.gradle'
+
+def mappingsChannel = project.hasProperty('mappings_channel') ? mappings_channel : 'official'
+def mappingsVersion = project.hasProperty('mappings_version') ? mappings_version : minecraft_version
+println 'Using mappings: ' + mappingsChannel + ' / ' + mappingsVersion
+
+// Use version from environment variable, if set
+def envVersion = System.getenv('VERSION')
+version = envVersion == null ? 'indev' : envVersion
+
+group = 'com.alcatrazescapee.modid'
+archivesBaseName = "${mod_id}-forge-${minecraft_version}"
+java.toolchain.languageVersion = JavaLanguageVersion.of(16)
+
+minecraft {
+    mappings channel: mappingsChannel, version: mappingsVersion
+    //accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+    
+    runs {
+        client {
+            workingDirectory project.file('run')
+            arg '-mixin.config=' + mod_id + '.mixins.json'
+            property 'forge.logging.console.level', 'debug'
+            property 'cyanide.client_self_test', 'com.alcatrazescapee.cyanide.Cyanide#selfTest'
+            property 'cyanide.enable_dangerous_features', 'true'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            mods {
+                cyanide {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        server {
+            workingDirectory project.file('run')
+            arg '-mixin.config=' + mod_id + '.mixins.json'
+            property 'forge.logging.console.level', 'debug'
+            property 'cyanide.client_self_test', 'com.alcatrazescapee.cyanide.Cyanide#selfTest'
+            property 'cyanide.enable_dangerous_features', 'true'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            mods {
+                cyanide {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    maven {
+        url "https://repo.spongepowered.org/repository/maven-public/"
+        content { includeGroup "org.spongepowered" }
+    }
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+// Hack to fix a FG bug involving loading non-MC libraries
+configurations {
+    library
+    implementation.extendsFrom library
+}
+minecraft.runs.all {
+    lazyToken('minecraft_classpath') {
+        configurations.library.copyRecursive().resolve().collect { it.absolutePath }.join(File.pathSeparator)
+    }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    
+    library "org.spongepowered:mixin:${mixin_version}"
+
+    if (System.getProperty("idea.sync.active") != "true") {
+        annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
+    }
+}
+
+
+// Puts the mod version into the jar for mods.toml to read from
+jar {
+    manifest {
+        attributes ([
+            "Implementation-Version": "${project.version}",
+            "MixinConfigs": "${mod_id}.mixins.json"
+        ])
+    }
+}
+
+
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+}
+
+// Automatically apply a license header when running checkLicense / updateLicense
+license {
+    header = project.file('HEADER.txt')
+
+    include '**/*.java'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            groupId = 'com.github.alcatrazEscapee'
+            artifactId = "cyanide"
+            version = "${project.version}"
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
+}
