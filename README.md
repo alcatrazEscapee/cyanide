@@ -6,6 +6,8 @@ Among those:
 - Adding or changing vanilla log message for better debugging.
   - Remove the stacktrace from invalid loot table and recipe errors
   - Add an error message for world gen datapack errors identifying the original file(s) that errored.
+  - Fix MC-190122 : Make the "Loaded X recipes" count accurate.
+- Enable the "Debug World" selection that was removed in 1.17.
 - Adding injections for running client self tests, in the same location as Vanilla's `Minecraft#selfTest`.
 - Disabling data fixer loading. (This is a performance mod now.)
 

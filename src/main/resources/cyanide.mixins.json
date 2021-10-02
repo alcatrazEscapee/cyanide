@@ -11,7 +11,8 @@
     "UtilMixin"
   ],
   "client": [
-    "client.MinecraftMixin"
+    "client.MinecraftMixin",
+    "client.WorldPresetMixin"
   ],
   "injectors": {
     "defaultRequire": 0
