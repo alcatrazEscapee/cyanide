@@ -39,7 +39,7 @@ println 'Using mappings: ' + mappingsChannel + ' / ' + mappingsVersion
 def envVersion = System.getenv('VERSION')
 version = envVersion == null ? 'indev' : envVersion
 
-group = 'com.alcatrazescapee.modid'
+group = 'com.github.alcatrazEscapee'
 archivesBaseName = "${mod_id}-forge-${minecraft_version}"
 java.toolchain.languageVersion = JavaLanguageVersion.of(16)
 
