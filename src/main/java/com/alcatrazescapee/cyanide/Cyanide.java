@@ -25,7 +25,6 @@ import com.mojang.serialization.DataResult;
 @Mod("cyanide")
 public final class Cyanide
 {
-    public static final boolean DANGER = Boolean.getBoolean("cyanide.enable_dangerous_features");
     @Nullable public static final String CLIENT_SELF_TEST = System.getProperty("cyanide.client_self_test");
 
     private static final Set<ResourceKey<?>> ERRORS = new HashSet<>();
