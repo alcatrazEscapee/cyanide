@@ -2,16 +2,12 @@ package com.alcatrazescapee.cyanide.mixin;
 
 import java.util.Map;
 
-import com.google.gson.JsonParseException;
-import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.RegistryReadOps;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.util.Unit;
 
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
-import com.mojang.serialization.DataResult;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;

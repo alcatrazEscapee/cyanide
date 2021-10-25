@@ -26,18 +26,7 @@ import com.mojang.serialization.DataResult;
 public final class Cyanide
 {
     @Nullable public static final String CLIENT_SELF_TEST = System.getProperty("cyanide.client_self_test");
-
-    private static final Logger LOGGER = LogManager.getLogger();
-
-    public static void cleanLootTableError(String message, Object p0, Object p1)
-    {
-        cleanError("Error parsing loot table {}.json : {}", message, p0, p1);
-    }
-
-    public static void cleanRecipeError(String message, Object p0, Object p1)
-    {
-        cleanError("Error parsing recipe {}.json : {}", message, p0, p1);
-    }
+    public static final Logger LOGGER = LogManager.getLogger();
 
     public static Optional<Method> findClientSelfTestMethod()
     {
@@ -77,16 +66,6 @@ public final class Cyanide
     public static void selfTest()
     {
         LOGGER.info("Cyanide Self Test");
-    }
-
-    private static void cleanError(String message, String fallbackMessage, Object possibleId, Object possibleError)
-    {
-        if (possibleId instanceof ResourceLocation id && possibleError instanceof Exception e)
-        {
-            LOGGER.error(message, id, e.getMessage());
-            return;
-        }
-        LOGGER.error(fallbackMessage, possibleId, possibleError); // Fallback
     }
 
     @SuppressWarnings("unchecked")

@@ -71,8 +71,7 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
             DataResult<Supplier<E>> decoded = ((RegistryReadOpsAccessor) registryOps).cyanide$readAndRegisterElement(registryKey, optionalRegistry.get(), elementCodec, id);
             if (decoded.error().isPresent())
             {
-                // Addition of .mapError() here causes the registry name, element id, and json to propagate across the chain
-                decoded = MixinHooks.appendRegistryEntryError(decoded, id, registryKey);
+                decoded = MixinHooks.appendRegistryEntryErrors(decoded, registryOps, id, registryKey);
             }
             return decoded.map(e -> Pair.of(e, result.getSecond()));
         }

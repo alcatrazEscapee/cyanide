@@ -8,7 +8,9 @@ package com.alcatrazescapee.cyanide.codec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import com.google.common.collect.Lists;
 import net.minecraft.core.Registry;
@@ -44,6 +46,36 @@ public final class Codecs
     public static <F, S> Codec<Either<F, S>> either(ShapedCodec<F> first, ShapedCodec<S> second)
     {
         return new ImprovedEitherCodec<>(first, second);
+    }
+
+    public static <E> Codec<List<E>> list(Codec<E> elementCodec)
+    {
+        return new ImprovedListCodec<>(elementCodec, (e, i) -> "at index " + i);
+    }
+
+    public static <E> Codec<List<E>> list(Codec<E> elementCodec, ImprovedListCodec.Reporter indexReporter)
+    {
+        return new ImprovedListCodec<>(elementCodec, indexReporter);
+    }
+
+    public static <E> Codec<E> reporting(Codec<E> codec, String at)
+    {
+        return new ReportingCodec<>(codec, e -> MixinHooks.appendErrorLocation(e, at));
+    }
+
+    public static <E> Codec<E> reporting(Codec<E> codec, UnaryOperator<String> errorReporter)
+    {
+        return new ReportingCodec<>(codec, errorReporter);
+    }
+
+    public static <E> MapCodec<E> reporting(MapCodec<E> codec, String at)
+    {
+        return new ReportingMapCodec<>(codec, e -> MixinHooks.appendErrorLocation(e, at));
+    }
+
+    public static <E> MapCodec<E> reporting(MapCodec<E> codec, UnaryOperator<String> errorReporter)
+    {
+        return new ReportingMapCodec<>(codec, errorReporter);
     }
 
     /**

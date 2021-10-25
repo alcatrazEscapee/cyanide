@@ -14,7 +14,7 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 
-import com.alcatrazescapee.cyanide.Cyanide;
+import com.alcatrazescapee.cyanide.codec.MixinHooks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,7 +31,7 @@ public abstract class RecipeManagerMixin
     @Redirect(method = "apply", at = @At(value = "INVOKE", target = "Lorg/apache/logging/log4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private void simplifyRecipeErrors(Logger logger, String message, Object p0, Object p1)
     {
-        Cyanide.cleanRecipeError(message, p0, p1);
+        MixinHooks.cleanRecipeError(logger, message, p0, p1);
     }
 
     /**

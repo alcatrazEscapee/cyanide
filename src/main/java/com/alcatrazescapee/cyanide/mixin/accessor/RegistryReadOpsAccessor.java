@@ -26,6 +26,9 @@ public interface RegistryReadOpsAccessor
     @Accessor("registryAccess")
     RegistryAccess cyanide$getRegistryAccess();
 
+    @Accessor("resources")
+    RegistryReadOps.ResourceAccess cyanide$getResources();
+
     @Invoker("readAndRegisterElement")
     <E> DataResult<Supplier<E>> cyanide$readAndRegisterElement(ResourceKey<? extends Registry<E>> registryKey, final WritableRegistry<E> registry, Codec<E> elementCodec, ResourceLocation id);
 }
