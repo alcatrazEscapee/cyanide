@@ -4,9 +4,16 @@
   "package": "com.alcatrazescapee.cyanide.mixin",
   "compatibilityLevel": "JAVA_16",
   "mixins": [
+    "BiomeGenerationSettingsMixin",
     "LootTablesMixin",
     "RecipeManagerMixin",
-    "RegistryReadOpsMixin"
+    "RegistryAccessMixin",
+    "RegistryFileCodecMixin",
+    "RegistryReadOpsMixin",
+    "accessor.BiomeGenerationSettingsAccessor",
+    "accessor.DelegatingOpsAccessor",
+    "accessor.RegistryReadOpsAccessor",
+    "accessor.RegistryWriteOpsAccessor"
   ],
   "client": [
     "client.MinecraftMixin",

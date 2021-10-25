@@ -27,20 +27,7 @@ public final class Cyanide
 {
     @Nullable public static final String CLIENT_SELF_TEST = System.getProperty("cyanide.client_self_test");
 
-    private static final Set<ResourceKey<?>> ERRORS = new HashSet<>();
     private static final Logger LOGGER = LogManager.getLogger();
-
-    public static <E> void captureAndExpandError(ResourceKey<? extends Registry<E>> registryKey, ResourceLocation id, DataResult<Supplier<E>> result)
-    {
-        result.error().ifPresent(error -> {
-            // Avoid duplicate errors, as this may be invoked for the same resource multiple times (falling back to an internal cache)
-            final ResourceKey<?> key = ResourceKey.create(registryKey, id);
-            if (ERRORS.add(key))
-            {
-                LOGGER.error("Error reading {}.json from {} : {}", id, registryKey.location().getPath(), error.message());
-            }
-        });
-    }
 
     public static void cleanLootTableError(String message, Object p0, Object p1)
     {
