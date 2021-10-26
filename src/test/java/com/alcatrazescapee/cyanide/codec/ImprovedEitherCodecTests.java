@@ -10,47 +10,40 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ImprovedEitherCodecTests
 {
-    static record Data(String name, int id)
-    {
-        static final Codec<Data> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.STRING.fieldOf("name").forGetter(Data::name),
-            Codec.INT.fieldOf("id").forGetter(Data::id)
-        ).apply(instance, Data::new));
-    }
-
     @Test
     public void testEitherCodec()
     {
-        runExamples(Codec.either(Data.CODEC, Codec.STRING));
+        runExamples("Either Codec", Codec.either(Data.CODEC, Codec.STRING));
     }
 
     @Test
     public void testEitherCodecInverse()
     {
-        runExamples(Codec.either(Codec.STRING, Data.CODEC).xmap(Either::swap, Either::swap));
+        runExamples("Either Codec Inverse", Codec.either(Codec.STRING, Data.CODEC).xmap(Either::swap, Either::swap));
     }
 
     @Test
     public void testImprovedEitherCodec()
     {
-        runExamples(Codecs.either(ShapedCodec.likeMap(Data.CODEC), ShapedCodec.likeString(Codec.STRING)));
+        runExamples("Improved Either Codec", Codecs.either(ShapedCodec.likeMap(Data.CODEC), ShapedCodec.likeString(Codec.STRING)));
     }
 
     @Test
     public void testImprovedEitherCodecInverse()
     {
-        runExamples(Codecs.either(ShapedCodec.likeString(Codec.STRING), ShapedCodec.likeMap(Data.CODEC)).xmap(Either::swap, Either::swap));
+        runExamples("Improved Either Codec Inverse", Codecs.either(ShapedCodec.likeString(Codec.STRING), ShapedCodec.likeMap(Data.CODEC)).xmap(Either::swap, Either::swap));
     }
 
-    private void runExamples(Codec<Either<Data, String>> codec)
+    private void runExamples(String name, Codec<Either<Data, String>> codec)
     {
+        System.out.println("Examples: " + name);
+
         final DynamicOps<JsonElement> ops = JsonOps.INSTANCE;
 
         final JsonObject jsonObject = new JsonObject();

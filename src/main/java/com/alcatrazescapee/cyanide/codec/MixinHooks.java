@@ -134,7 +134,7 @@ public final class MixinHooks
 
     public static String appendErrorLocation(String error, String at)
     {
-        return ensureNewLineSuffix(error) + "\n\tat: " + at;
+        return ensureNewLineSuffix(error) + "\tat: " + at;
     }
 
     @SuppressWarnings("unchecked")

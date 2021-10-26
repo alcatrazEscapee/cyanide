@@ -60,7 +60,7 @@ public final class Codecs
 
     public static <E> Codec<E> reporting(Codec<E> codec, String at)
     {
-        return new ReportingCodec<>(codec, e -> MixinHooks.appendErrorLocation(e, at));
+        return new ReportingCodec<>(codec, e -> MixinHooks.appendErrorLocation(e, '"' + at + '"'));
     }
 
     public static <E> Codec<E> reporting(Codec<E> codec, UnaryOperator<String> errorReporter)
@@ -70,7 +70,7 @@ public final class Codecs
 
     public static <E> MapCodec<E> reporting(MapCodec<E> codec, String at)
     {
-        return new ReportingMapCodec<>(codec, e -> MixinHooks.appendErrorLocation(e, at));
+        return new ReportingMapCodec<>(codec, e -> MixinHooks.appendErrorLocation(e, '"' + at + '"'));
     }
 
     public static <E> MapCodec<E> reporting(MapCodec<E> codec, UnaryOperator<String> errorReporter)
