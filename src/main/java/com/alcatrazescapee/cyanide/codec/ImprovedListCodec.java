@@ -1,7 +1,6 @@
 package com.alcatrazescapee.cyanide.codec;
 
 import java.util.List;
-import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 import com.google.common.collect.ImmutableList;

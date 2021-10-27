@@ -15,13 +15,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
-import com.alcatrazescapee.cyanide.codec.ResourceAccessWrapper;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RegistryReadOps.class)
@@ -39,9 +40,9 @@ public abstract class RegistryReadOpsMixin
         return MixinHooks.wrapResourceAccess(manager);
     }
 
-    @Inject(method = "readAndRegisterElement", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "readAndRegisterElement", slice = @Slice(to = @At(value = "INVOKE", target = "Lcom/google/common/base/Suppliers;memoize(Lcom/google/common/base/Supplier;)Lcom/google/common/base/Supplier;")), at = @At(value = "RETURN", ordinal = 1), cancellable = true)
     private <E> void readAndRegisterElement(ResourceKey<? extends Registry<E>> registryKey, WritableRegistry<E> registry, Codec<E> elementCodec, ResourceLocation resourceId, CallbackInfoReturnable<DataResult<Supplier<E>>> cir)
     {
-        cir.setReturnValue(MixinHooks.appendRegistryEntryErrors(cir.getReturnValue(), MixinHooks.cast(this), resourceId, registryKey));
+        cir.setReturnValue(MixinHooks.appendRegistryFileError(cir.getReturnValue(), MixinHooks.cast(this), resourceId, registryKey));
     }
 }

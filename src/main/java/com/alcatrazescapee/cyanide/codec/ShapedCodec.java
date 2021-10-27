@@ -8,7 +8,8 @@ public interface ShapedCodec<A> extends Codec<A>
 {
     static <A> ShapedCodec<A> likeNumber(Codec<A> codec)
     {
-        return new Impl<>(codec) {
+        return new Impl<>(codec)
+        {
             @Override
             public <T> DataResult<?> decodeShape(DynamicOps<T> ops, T input)
             {
@@ -19,7 +20,8 @@ public interface ShapedCodec<A> extends Codec<A>
 
     static <A> ShapedCodec<A> likeString(Codec<A> codec)
     {
-        return new Impl<>(codec) {
+        return new Impl<>(codec)
+        {
             @Override
             public <T> DataResult<?> decodeShape(DynamicOps<T> ops, T input)
             {
@@ -30,7 +32,8 @@ public interface ShapedCodec<A> extends Codec<A>
 
     static <A> ShapedCodec<A> likeMap(Codec<A> codec)
     {
-        return new Impl<>(codec) {
+        return new Impl<>(codec)
+        {
             @Override
             public <T> DataResult<?> decodeShape(DynamicOps<T> ops, T input)
             {
@@ -41,7 +44,8 @@ public interface ShapedCodec<A> extends Codec<A>
 
     static <A> ShapedCodec<A> likeList(Codec<A> codec)
     {
-        return new Impl<>(codec) {
+        return new Impl<>(codec)
+        {
             @Override
             public <T> DataResult<?> decodeShape(DynamicOps<T> ops, T input)
             {
@@ -52,7 +56,8 @@ public interface ShapedCodec<A> extends Codec<A>
 
     static <A> ShapedCodec<A> likeAny(Codec<A> codec)
     {
-        return new Impl<>(codec) {
+        return new Impl<>(codec)
+        {
             @Override
             public <T> DataResult<T> decodeShape(DynamicOps<T> ops, T input)
             {

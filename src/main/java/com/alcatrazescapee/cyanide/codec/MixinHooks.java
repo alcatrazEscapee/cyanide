@@ -6,7 +6,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
 import org.apache.logging.log4j.Logger;
 import net.minecraft.core.MappedRegistry;
@@ -40,9 +39,9 @@ public final class MixinHooks
     public static void readRegistries(RegistryAccess registryAccess, RegistryReadOps<?> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData)
     {
         DataResult<Unit> root = DataResult.success(Unit.INSTANCE);
-        for(RegistryAccess.RegistryData<?> data : registryData.values())
+        for (RegistryAccess.RegistryData<?> data : registryData.values())
         {
-            root = MixinHooks.readRegistry(root, registryAccess, ops, data);
+            root = readRegistry(root, registryAccess, ops, data);
         }
         if (root.error().isPresent())
         {
@@ -59,30 +58,29 @@ public final class MixinHooks
             .mapError(e -> "\n\nError(s) loading registry " + key.location() + ":\n" + e.replaceAll("; ", "\n")));
     }
 
-    public static <E> DataResult<E> appendRegistryEntryErrors(DataResult<E> result, RegistryReadOps<?> ops, ResourceLocation id, ResourceKey<? extends Registry<?>> registry)
+    public static <E> DataResult<E> appendRegistryError(DataResult<E> result, ResourceKey<? extends Registry<?>> registry)
     {
-        result = result.mapError(e -> appendErrorLocation(e, id + " from " + registry.location()));
-        return appendRegistryEntrySourceError(result, ops, registry, id);
+        return result.mapError(e -> appendErrorLocation(e, "registry " + registry.location()));
     }
 
-    public static <E> DataResult<E> appendRegistryJsonError(DataResult<E> result, Object possibleJson, ResourceKey<? extends Registry<?>> registry)
+    public static <E> DataResult<E> appendRegistryReferenceError(DataResult<E> result, ResourceLocation id, ResourceKey<? extends Registry<?>> registry)
     {
-        if (possibleJson instanceof JsonElement json)
-        {
-            return result.mapError(e -> appendErrorLocation(e, "registry " + registry.location() + "\n\tat: JSON " + json));
-        }
-        return result.mapError(e -> appendErrorLocation(e, "registry " + registry.location()));
+        return result.mapError(e -> appendErrorLocation(e, "reference to \"" + id + "\" from " + registry.location()));
+    }
+
+    public static <E> DataResult<E> appendRegistryFileError(DataResult<E> result, RegistryReadOps<?> ops, ResourceLocation id, ResourceKey<? extends Registry<?>> registry)
+    {
+        result = result.mapError(e -> appendErrorLocation(e, "file \"" + registryFile(registry, id) + '"'));
+        return appendRegistryEntrySourceError(result, ops, registry, id);
     }
 
     public static <E> DataResult<E> appendRegistryEntrySourceError(DataResult<E> result, RegistryReadOps<?> ops, ResourceKey<? extends Registry<?>> registryKey, ResourceLocation resourceLocation)
     {
         if (((RegistryReadOpsAccessor) ops).cyanide$getResources() instanceof ResourceAccessWrapper wrapper)
         {
-            // Mirrors RegistryReadOps.ResourceAccess
-            final ResourceLocation resourceFileLocation = new ResourceLocation(resourceLocation.getNamespace(), registryKey.location().getPath() + "/" + resourceLocation.getPath() + ".json");
             try
             {
-                final Resource resource = wrapper.manager().getResource(resourceFileLocation);
+                final Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation));
                 return result.mapError(e -> appendErrorLocation(e, "data pack " + resource.getSourceName()));
             }
             catch (IOException e) { /* Ignore */ }
@@ -141,6 +139,21 @@ public final class MixinHooks
     public static <T> T cast(Object o)
     {
         return (T) o;
+    }
+
+    private static String registryFile(ResourceKey<? extends Registry<?>> registry, ResourceLocation resource)
+    {
+        final ResourceLocation file = registryFileLocation(registry, resource);
+        return "data/" + file.getNamespace() + "/" + file.getPath();
+    }
+
+    /**
+     * Mirrors the logic used in {@link net.minecraft.resources.RegistryReadOps.ResourceAccess#forResourceManager(ResourceManager)} for {@code parseElement()}.
+     * Used to refer to a registry and element pair by it's datapack defined file location.
+     */
+    private static ResourceLocation registryFileLocation(ResourceKey<? extends Registry<?>> registry, ResourceLocation resource)
+    {
+        return new ResourceLocation(resource.getNamespace(), registry.location().getPath() + "/" + resource.getPath() + ".json");
     }
 
     private static String ensureNewLineSuffix(String s)

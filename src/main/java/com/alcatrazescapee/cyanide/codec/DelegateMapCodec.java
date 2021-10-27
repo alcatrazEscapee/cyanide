@@ -2,7 +2,6 @@ package com.alcatrazescapee.cyanide.codec;
 
 import java.util.stream.Stream;
 
-import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.*;
 
 public class DelegateMapCodec<A> extends MapCodec<A>

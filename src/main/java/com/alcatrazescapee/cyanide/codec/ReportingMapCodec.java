@@ -1,11 +1,13 @@
 package com.alcatrazescapee.cyanide.codec;
 
 import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
 
-import com.mojang.serialization.*;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.MapLike;
 
-public class ReportingMapCodec<E> extends DelegateMapCodec<E>
+public final class ReportingMapCodec<E> extends DelegateMapCodec<E>
 {
     private final UnaryOperator<String> errorReporter;
 
