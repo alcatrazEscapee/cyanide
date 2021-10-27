@@ -5,12 +5,15 @@
   "compatibilityLevel": "JAVA_16",
   "mixins": [
     "BiomeGenerationSettingsMixin",
+    "BiomeMixin",
     "LootTablesMixin",
     "RecipeManagerMixin",
     "RegistryAccessMixin",
     "RegistryFileCodecMixin",
     "RegistryReadOpsMixin",
+    "accessor.BiomeAccessor",
     "accessor.BiomeGenerationSettingsAccessor",
+    "accessor.BiomeSpecialEffectsAccessor",
     "accessor.DelegatingOpsAccessor",
     "accessor.RegistryReadOpsAccessor",
     "accessor.RegistryWriteOpsAccessor"

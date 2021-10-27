@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:decorated",
+  "config": {
+    "feature": {
+      "type": "minecraft:no_op",
+      "config": {}
+    },
+    "decorator": {
+      "type": "minecraft:heightmap",
+      "config": {
+        "heightmap": "tallest_heightmap"
+      }
+    }
+  }
+}

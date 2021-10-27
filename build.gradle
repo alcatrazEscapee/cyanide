@@ -157,3 +157,11 @@ publishing {
         mavenLocal()
     }
 }
+
+task makeTestDataPack(type: Exec) {
+    workingDir "${projectDir}/datapacks"
+    commandLine 'jar', '-cMf', 'example_datapack.zip', 'pack.mcmeta', 'data'
+    doLast {
+        println "Executed!"
+    }
+}

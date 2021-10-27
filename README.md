@@ -1,15 +1,78 @@
-## Cyanide
+# Cyanide
 
-A dev-time (`runtimeOnly`) dependency for Minecraft mods, to fix those annoying little things that you definitely don't want to be shipping in your mod because they're awful gross hacks.
+---
 
-Among those:
-- Adding or changing vanilla log message for better debugging.
-  - Remove the stacktrace from invalid loot table and recipe errors
-  - Add an error message for world gen datapack errors identifying the original file(s) that errored.
-  - Fix MC-190122 : Make the "Loaded X recipes" count accurate.
-- Enable the "Debug World" selection that was removed in 1.17.
-- Adding injections for running client self tests, in the same location as Vanilla's `Minecraft#selfTest`.
-- Disabling data fixer loading. (This is a performance mod now.)
+*cyanide seems to be something that will make me want to drink cyanide a lot less - Starmute, world generation datapack wizard.*
+
+A mod which substantially improves Minecraft's data driven world generation error detection and recovery mechanisms. For example, consider the following fairly common error in Vanilla:
+
+```
+Feature: Not a JSON object: "minecraft:disk_gravel"; Not a JSON object: "minecraft:disk_clay"; Not a JSON object: "minecraft:disk_sand"; Not a JSON object: "minecraft:ore_copper"; Not a JSON object: "minecraft:ore_lapis"; Not a JSON object: "minecraft:ore_diamond"; Not a JSON object: "minecraft:ore_redstone"; Not a JSON object: "minecraft:ore_gold"; Not a JSON object: "minecraft:ore_iron"; Not a JSON object: "minecraft:ore_coal"; Not a JSON object: "cyanide:broken_disk_gravel"; Not a JSON object: "minecraft:ore_deepslate"; Not a JSON object: "minecraft:ore_tuff"; Not a JSON object: "minecraft:ore_andesite"; Not a JSON object: "minecraft:ore_diorite"; Not a JSON object: "minecraft:ore_granite"; Not a JSON object: "minecraft:ore_gravel"; Not a JSON object: "minecraft:ore_dirt"
+[19:04:44] [Render thread/WARN]: Failed to validate datapack
+java.util.concurrent.CompletionException: com.google.gson.JsonParseException: Error loading registry data: No key snowy in MapLike[{"not_snowy":"true"}]
+```
+
+And now compare the error, using the exact same datapack, with Cyanide included:
+
+```
+Error(s) loading registry minecraft:worldgen/biome:
+No key snowy in MapLike[{"not_snowy":"true"}]
+	at: file "data/cyanide/worldgen/configured_feature/broken_disk_gravel.json"
+	at: data pack cyanide-debug.zip
+	at: reference to "cyanide:broken_disk_gravel" from minecraft:worldgen/configured_feature
+Missing feature at index 7
+	at: "features", step underground_ores, index 6
+	at: file "data/cyanide/worldgen/biome/plains_broken_feature.json"
+	at: data pack cyanide-debug.zip
+Missing feature at index 6
+	at: "features", step underground_ores, index 6
+	at: file "data/cyanide/worldgen/biome/plains_unregistered_feature.json"
+	at: data pack cyanide-debug.zip; 
+
+Error(s) loading registry minecraft:worldgen/configured_feature:
+No key snowy in MapLike[{"not_snowy":"true"}]
+	at: file "data/cyanide/worldgen/configured_feature/broken_disk_gravel.json"
+	at: data pack cyanide-debug.zip
+Unknown element name: invalid_heightmap
+	at: file "data/cyanide/worldgen/configured_feature/broken_disk_gravel_2.json"
+	at: data pack cyanide-debug.zip
+```
+
+### Features
+
+World Generation Data Pack Error Improvements
+
+- Append the file to each error message. (`at: file "data/cyanide/blah/blah.json"`)
+- Append the source datapack to each error message (`at: data pack blah.zip`)
+- Group and categorize errors by registry.
+- Several improvements for error recovery:
+  - If an error occurs during a single registry parsing, don't abort parsing others.
+  - Record all errors that occur parsing a single registry, not just the first one.
+- Optional fields, in some cases, will error if a value is present, but invalid. Example:
+
+```
+In a biome json, the following is a valid temperature modifier.
+It is the same as using a temperature modifier of 'none'.
+In Cyanide, this would error.
+
+"temperature_modifier": "hocus pocus!"
+```
+
+- Improvements for select codecs, which now report trace information to identify where in the file an error occurred.
+  - Features in biomes identify both the index in the list, and the index as a generation step.
+  - Other fields such as `carvers`, `surface_builder`, etc. in biomes will be traced in error messages.
+- Removed the `Feature: Not a JSON Object` log messages. These are now upgraded to full errors.
+- Improvements for log messages for invalid loot tables and recipes:
+  - Stack traces are not printed to the log.
+  - Offending file names are identified and printed instead.
+- The "Loaded X Recipe(s)" log message is now accurate.
+
+### For Modders
+
+Why would I use Cyanide as an optional, or actual dependency?
+
+- Cyanide provides a spot to run self tests in the same fashion as vanilla's `Minecraft#selfTest`.
+- Cyanide has a large selection of codecs that have improved error handling and can be used in place of vanilla codecs.
 
 Usage:
 
@@ -31,8 +94,6 @@ minecraft {
         client {
             // Method must be a public static void with no arguments, in a public class. Will be invoked reflectively. Can throw exceptions.
             property 'cyanide.client_self_test', 'package.FullyQualifiedClassName#methodToRunSelfTests'
-            // Enables things that may break other things (removing DFU)
-            property 'cyanide.enable_dangerous_features', 'true'
         }
     }
 }

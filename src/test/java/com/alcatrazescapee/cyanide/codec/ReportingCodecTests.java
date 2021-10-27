@@ -2,7 +2,6 @@ package com.alcatrazescapee.cyanide.codec;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;

@@ -8,6 +8,8 @@
 !gradle/wrapper/gradle-wrapper.properties
 !img/**/*.png
 !src/**
+!datapack/**/*.json
+!datapack/pack.mcmeta
 
 # Metadata
 !build.gradle

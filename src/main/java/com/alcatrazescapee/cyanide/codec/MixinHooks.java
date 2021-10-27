@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import com.google.gson.JsonParseException;
@@ -16,21 +17,27 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.sounds.Music;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.util.Unit;
-import net.minecraft.world.level.biome.BiomeGenerationSettings;
+import net.minecraft.world.level.biome.*;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.surfacebuilders.ConfiguredSurfaceBuilder;
 
+import com.alcatrazescapee.cyanide.mixin.accessor.BiomeAccessor;
 import com.alcatrazescapee.cyanide.mixin.accessor.BiomeGenerationSettingsAccessor;
+import com.alcatrazescapee.cyanide.mixin.accessor.BiomeSpecialEffectsAccessor;
 import com.alcatrazescapee.cyanide.mixin.accessor.RegistryReadOpsAccessor;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+
+import static net.minecraftforge.common.ForgeHooks.*;
 
 public final class MixinHooks
 {
@@ -88,6 +95,45 @@ public final class MixinHooks
         return result;
     }
 
+    public static Codec<Biome> makeBiomeCodec()
+    {
+        // Add Codecs.reporting() to key fields
+        // Use improved codec for temperature settings and special effects codecs that use improved optionals and Codecs.reporting()
+
+        final MapCodec<Biome.ClimateSettings> climateSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            Codecs.reporting(Biome.Precipitation.CODEC.fieldOf("precipitation"), "precipitation").forGetter(c -> c.precipitation),
+            Codecs.reporting(Codec.FLOAT.fieldOf("temperature"), "temperature").forGetter(c -> c.temperature),
+            Codecs.optionalFieldOf(Biome.TemperatureModifier.CODEC, "temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(c -> c.temperatureModifier),
+            Codecs.reporting(Codec.FLOAT.fieldOf("downfall"), "downfall").forGetter(c -> c.downfall)
+        ).apply(instance, Biome.ClimateSettings::new));
+
+        final Codec<BiomeSpecialEffects> specialEffectsCodec = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.INT.fieldOf("fog_color").forGetter(BiomeSpecialEffects::getFogColor),
+            Codec.INT.fieldOf("water_color").forGetter(BiomeSpecialEffects::getWaterColor),
+            Codec.INT.fieldOf("water_fog_color").forGetter(BiomeSpecialEffects::getWaterFogColor),
+            Codec.INT.fieldOf("sky_color").forGetter(BiomeSpecialEffects::getSkyColor),
+            Codec.INT.optionalFieldOf("foliage_color").forGetter(BiomeSpecialEffects::getFoliageColorOverride),
+            Codec.INT.optionalFieldOf("grass_color").forGetter(BiomeSpecialEffects::getGrassColorOverride),
+            BiomeSpecialEffects.GrassColorModifier.CODEC.optionalFieldOf("grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
+            AmbientParticleSettings.CODEC.optionalFieldOf("particle").forGetter(BiomeSpecialEffects::getAmbientParticleSettings),
+            SoundEvent.CODEC.optionalFieldOf("ambient_sound").forGetter(BiomeSpecialEffects::getAmbientLoopSoundEvent),
+            AmbientMoodSettings.CODEC.optionalFieldOf("mood_sound").forGetter(BiomeSpecialEffects::getAmbientMoodSettings),
+            AmbientAdditionsSettings.CODEC.optionalFieldOf("additions_sound").forGetter(BiomeSpecialEffects::getAmbientAdditionsSettings),
+            Music.CODEC.optionalFieldOf("music").forGetter(BiomeSpecialEffects::getBackgroundMusic)
+        ).apply(instance, BiomeSpecialEffectsAccessor::cyanide$new));
+
+        return RecordCodecBuilder.create(instance -> instance.group(
+            climateSettingsCodec.forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getClimateSettings()),
+            Biome.BiomeCategory.CODEC.fieldOf("category").forGetter(Biome::getBiomeCategory),
+            Codecs.reporting(Codec.FLOAT.fieldOf("depth"), "depth").forGetter(Biome::getDepth),
+            Codecs.reporting(Codec.FLOAT.fieldOf("scale"), "scale").forGetter(Biome::getScale),
+            Codecs.reporting(specialEffectsCodec.fieldOf("effects"), "effects").forGetter(Biome::getSpecialEffects),
+            BiomeGenerationSettings.CODEC.forGetter(Biome::getGenerationSettings),
+            MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings),
+            ResourceLocation.CODEC.optionalFieldOf("forge:registry_name").forGetter(b -> Optional.ofNullable(b.getRegistryName()))
+        ).apply(instance, (climate, category, depth, scale, effects, gen, spawns, name) -> enhanceBiome(name.orElse(null), climate, category, depth, scale, effects, gen, spawns, instance, BiomeAccessor::cyanide$new)));
+    }
+
     public static MapCodec<BiomeGenerationSettings> makeBiomeGenerationSettingsCodec()
     {
         // Remove promotePartial calls, as logging at this level is pointless since we don't have a file or a registry name
@@ -100,7 +146,7 @@ public final class MixinHooks
                 GenerationStep.Carving.CODEC,
                 Codecs.nonNullSupplierList(ConfiguredWorldCarver.LIST_CODEC, "carver"),
                 StringRepresentable.keys(GenerationStep.Carving.values())
-            ).fieldOf("carvers"), "\"carvers\"").forGetter(c -> ((BiomeGenerationSettingsAccessor) c).cyanide$getCarvers()),
+            ).fieldOf("carvers"), "carvers").forGetter(c -> ((BiomeGenerationSettingsAccessor) c).cyanide$getCarvers()),
             Codecs.list(
                 Codecs.nonNullSupplierList(ConfiguredFeature.LIST_CODEC, "feature"),
                 (e, i) -> {

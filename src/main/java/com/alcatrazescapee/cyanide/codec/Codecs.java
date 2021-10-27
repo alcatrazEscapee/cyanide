@@ -5,21 +5,19 @@
 
 package com.alcatrazescapee.cyanide.codec;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.Collectors;
 
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ExtraCodecs;
+import net.minecraft.util.StringRepresentable;
 
 import com.mojang.datafixers.util.Either;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.Lifecycle;
-import com.mojang.serialization.MapCodec;
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.*;
+import com.mojang.serialization.codecs.OptionalFieldCodec;
 
 public final class Codecs
 {
@@ -74,6 +72,62 @@ public final class Codecs
     public static <E> MapCodec<E> reporting(MapCodec<E> codec, UnaryOperator<String> errorReporter)
     {
         return new ReportingMapCodec<>(codec, errorReporter);
+    }
+
+    public static <E> MapCodec<E> optionalFieldOf(Codec<E> codec, String name, E defaultValue) {
+        return optionalField(codec, name).xmap(
+            o -> o.orElse(defaultValue),
+            a -> Objects.equals(a, defaultValue) ? Optional.empty() : Optional.of(a)
+        );
+    }
+
+    public static <F> MapCodec<Optional<F>> optionalField(Codec<F> elementCodec, String name)
+    {
+        return new ImprovedOptionalCodec<>(name, elementCodec);
+    }
+
+    /**
+     * Like {@link StringRepresentable#fromEnum(Supplier, Function)} but with named errors.
+     */
+    public static <E extends Enum<E> & StringRepresentable> Codec<E> fromEnum(String id, Supplier<E[]> enumValues, Function<? super String, ? extends E> enumName)
+    {
+        final E[] values = enumValues.get();
+        final String expectedIdRange = "[0, " + values.length + ")";
+        final String expectedValues = "[" + Arrays.stream(values).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]";
+        return fromStringResolver(id, expectedIdRange, expectedValues, Enum::ordinal, i -> values[i], enumName);
+    }
+
+    /**
+     * Like {@link StringRepresentable#fromStringResolver(ToIntFunction, IntFunction, Function)} but with named errors.
+     */
+    public static <E extends StringRepresentable> Codec<E> fromStringResolver(String id, String expectedIdRange, String expectedValues, ToIntFunction<E> objectToIdMapper, IntFunction<E> idToObjectMapper, Function<? super String, ? extends E> nameToObjectMapper)
+    {
+        return new Codec<>()
+        {
+            @Override
+            public <T> DataResult<T> encode(E input, DynamicOps<T> ops, T prefix)
+            {
+                return ops.compressMaps() ?
+                    ops.mergeToPrimitive(prefix, ops.createInt(objectToIdMapper.applyAsInt(input))) :
+                    ops.mergeToPrimitive(prefix, ops.createString(input.getSerializedName()));
+            }
+
+            @Override
+            public <T> DataResult<Pair<E, T>> decode(DynamicOps<T> ops, T input)
+            {
+                return ops.compressMaps() ?
+                    ops.getNumberValue(input)
+                        .flatMap(index -> Optional.ofNullable(idToObjectMapper.apply(index.intValue()))
+                            .map(DataResult::success)
+                            .orElseGet(() -> DataResult.error("Unknown " + id + " id: " + index + ", expected in " + expectedIdRange)))
+                        .map(value -> Pair.of(value, ops.empty())) :
+                    ops.getStringValue(input)
+                        .flatMap(name -> Optional.ofNullable(nameToObjectMapper.apply(name))
+                            .map(DataResult::success)
+                            .orElseGet(() -> DataResult.error("Unknown " + id + " name: " + name + ", expected one of " + expectedValues)))
+                        .map(value -> Pair.of(value, ops.empty()));
+            }
+        };
     }
 
     /**
