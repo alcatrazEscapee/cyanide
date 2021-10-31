@@ -18,7 +18,6 @@
     "accessor.RegistryWriteOpsAccessor"
   ],
   "client": [
-    "client.MinecraftMixin"
   ],
   "injectors": {
     "defaultRequire": 0
