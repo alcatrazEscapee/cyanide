@@ -1,3 +1,8 @@
+/*
+ * Part of the Cyanide mod.
+ * Licensed under MIT. See the project LICENSE.txt for details.
+ */
+
 package com.alcatrazescapee.cyanide.codec;
 
 import java.io.IOException;
