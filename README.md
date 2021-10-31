@@ -62,6 +62,14 @@ In Cyanide, this would error.
   - Features in biomes identify both the index in the list, and the index as a generation step.
   - Other fields such as `carvers`, `surface_builder`, etc. in biomes will be traced in error messages.
 - Removed the `Feature: Not a JSON Object` log messages. These are now upgraded to full errors.
+- Some fields, such as biome categories, temperature modifiers, and precipitations, have slightly improved error messages and will also show the range of valid values. Example:
+  
+```
+Unknown category name: not_a_category, expected one of [none, taiga, extreme_hills, jungle, mesa, plains, savanna, icy, the_end, beach, forest, ocean, desert, river, swamp, mushroom, nether, underground]
+	at: file "data/cyanide/worldgen/biome/invalid_category.json"
+	at: data pack test_data_pack.zip
+```
+
 - Improvements for log messages for invalid loot tables and recipes:
   - Stack traces are not printed to the log.
   - Offending file names are identified and printed instead.

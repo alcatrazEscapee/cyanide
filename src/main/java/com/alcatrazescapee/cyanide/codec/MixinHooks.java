@@ -28,6 +28,8 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.surfacebuilders.ConfiguredSurfaceBuilder;
 
+import net.minecraftforge.common.ForgeHooks;
+
 import com.alcatrazescapee.cyanide.mixin.accessor.BiomeAccessor;
 import com.alcatrazescapee.cyanide.mixin.accessor.BiomeGenerationSettingsAccessor;
 import com.alcatrazescapee.cyanide.mixin.accessor.BiomeSpecialEffectsAccessor;
@@ -36,8 +38,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-import static net.minecraftforge.common.ForgeHooks.*;
 
 public final class MixinHooks
 {
@@ -97,50 +97,37 @@ public final class MixinHooks
 
     public static Codec<Biome> makeBiomeCodec()
     {
-        // Add Codecs.reporting() to key fields
-        // Use improved codec for temperature settings and special effects codecs that use improved optionals and Codecs.reporting()
-
+        // Use improved .optionalFieldOf for temperature modifier, and use an improved enum codec for it.
+        // Add Codecs.reporting() to some fields.
         final MapCodec<Biome.ClimateSettings> climateSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codecs.reporting(Biome.Precipitation.CODEC.fieldOf("precipitation"), "precipitation").forGetter(c -> c.precipitation),
+            Codecs.reporting(Codecs.fromEnum("precipitation", Biome.Precipitation::values, Biome.Precipitation::byName).fieldOf("precipitation"), "precipitation").forGetter(c -> c.precipitation),
             Codecs.reporting(Codec.FLOAT.fieldOf("temperature"), "temperature").forGetter(c -> c.temperature),
-            Codecs.optionalFieldOf(Biome.TemperatureModifier.CODEC, "temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(c -> c.temperatureModifier),
+            Codecs.optionalFieldOf(Codecs.fromEnum("temperature modifier", Biome.TemperatureModifier::values, Biome.TemperatureModifier::byName), "temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(c -> c.temperatureModifier),
             Codecs.reporting(Codec.FLOAT.fieldOf("downfall"), "downfall").forGetter(c -> c.downfall)
         ).apply(instance, Biome.ClimateSettings::new));
 
+        // Redirect many .optionalFieldOf calls to Codecs
+        // Use custom codec for grass color modifier as an extensible enum
         final Codec<BiomeSpecialEffects> specialEffectsCodec = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.fieldOf("fog_color").forGetter(BiomeSpecialEffects::getFogColor),
             Codec.INT.fieldOf("water_color").forGetter(BiomeSpecialEffects::getWaterColor),
             Codec.INT.fieldOf("water_fog_color").forGetter(BiomeSpecialEffects::getWaterFogColor),
             Codec.INT.fieldOf("sky_color").forGetter(BiomeSpecialEffects::getSkyColor),
-            Codec.INT.optionalFieldOf("foliage_color").forGetter(BiomeSpecialEffects::getFoliageColorOverride),
-            Codec.INT.optionalFieldOf("grass_color").forGetter(BiomeSpecialEffects::getGrassColorOverride),
-            BiomeSpecialEffects.GrassColorModifier.CODEC.optionalFieldOf("grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
-            AmbientParticleSettings.CODEC.optionalFieldOf("particle").forGetter(BiomeSpecialEffects::getAmbientParticleSettings),
-            SoundEvent.CODEC.optionalFieldOf("ambient_sound").forGetter(BiomeSpecialEffects::getAmbientLoopSoundEvent),
-            AmbientMoodSettings.CODEC.optionalFieldOf("mood_sound").forGetter(BiomeSpecialEffects::getAmbientMoodSettings),
-            AmbientAdditionsSettings.CODEC.optionalFieldOf("additions_sound").forGetter(BiomeSpecialEffects::getAmbientAdditionsSettings),
-            Music.CODEC.optionalFieldOf("music").forGetter(BiomeSpecialEffects::getBackgroundMusic)
+            Codecs.optionalFieldOf(Codec.INT, "foliage_color").forGetter(BiomeSpecialEffects::getFoliageColorOverride),
+            Codecs.optionalFieldOf(Codec.INT, "grass_color").forGetter(BiomeSpecialEffects::getGrassColorOverride),
+            Codecs.optionalFieldOf(Codecs.fromExtensibleEnum("grass color modifier", BiomeSpecialEffects.GrassColorModifier::values, BiomeSpecialEffects.GrassColorModifier::byName), "grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
+            Codecs.optionalFieldOf(AmbientParticleSettings.CODEC, "particle").forGetter(BiomeSpecialEffects::getAmbientParticleSettings),
+            Codecs.optionalFieldOf(SoundEvent.CODEC, "ambient_sound").forGetter(BiomeSpecialEffects::getAmbientLoopSoundEvent),
+            Codecs.optionalFieldOf(AmbientMoodSettings.CODEC, "mood_sound").forGetter(BiomeSpecialEffects::getAmbientMoodSettings),
+            Codecs.optionalFieldOf(AmbientAdditionsSettings.CODEC, "additions_sound").forGetter(BiomeSpecialEffects::getAmbientAdditionsSettings),
+            Codecs.optionalFieldOf(Music.CODEC, "music").forGetter(BiomeSpecialEffects::getBackgroundMusic)
         ).apply(instance, BiomeSpecialEffectsAccessor::cyanide$new));
 
-        return RecordCodecBuilder.create(instance -> instance.group(
-            climateSettingsCodec.forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getClimateSettings()),
-            Biome.BiomeCategory.CODEC.fieldOf("category").forGetter(Biome::getBiomeCategory),
-            Codecs.reporting(Codec.FLOAT.fieldOf("depth"), "depth").forGetter(Biome::getDepth),
-            Codecs.reporting(Codec.FLOAT.fieldOf("scale"), "scale").forGetter(Biome::getScale),
-            Codecs.reporting(specialEffectsCodec.fieldOf("effects"), "effects").forGetter(Biome::getSpecialEffects),
-            BiomeGenerationSettings.CODEC.forGetter(Biome::getGenerationSettings),
-            MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings),
-            ResourceLocation.CODEC.optionalFieldOf("forge:registry_name").forGetter(b -> Optional.ofNullable(b.getRegistryName()))
-        ).apply(instance, (climate, category, depth, scale, effects, gen, spawns, name) -> enhanceBiome(name.orElse(null), climate, category, depth, scale, effects, gen, spawns, instance, BiomeAccessor::cyanide$new)));
-    }
-
-    public static MapCodec<BiomeGenerationSettings> makeBiomeGenerationSettingsCodec()
-    {
         // Remove promotePartial calls, as logging at this level is pointless since we don't have a file or a registry name
         // Replace ExtraCodecs calls with Codecs, that include names for what is null or invalid
         // Improve the feature list with one that reports generation steps
         // Add additional calls to Codecs.reporting() to contextualize where things are going wrong.
-        return RecordCodecBuilder.mapCodec(instance -> instance.group(
+        final MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Codecs.nonNullSupplier(ConfiguredSurfaceBuilder.CODEC.fieldOf("surface_builder"), "surface_builder").forGetter(BiomeGenerationSettings::getSurfaceBuilder),
             Codecs.reporting(Codec.simpleMap(
                 GenerationStep.Carving.CODEC,
@@ -159,6 +146,19 @@ public final class MixinHooks
             ).fieldOf("features").forGetter(BiomeGenerationSettings::features),
             Codecs.nonNullSupplierList(ConfiguredStructureFeature.LIST_CODEC, "structure start").fieldOf("starts").forGetter(c -> (List<Supplier<ConfiguredStructureFeature<?, ?>>>) c.structures())
         ).apply(instance, BiomeGenerationSettingsAccessor::cyanide$new));
+
+        // Add Codecs.reporting() to some fields
+        // Use improved enum codec for biome category, and all the above codecs
+        return RecordCodecBuilder.create(instance -> instance.group(
+            climateSettingsCodec.forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getClimateSettings()),
+            Codecs.fromEnum("category", Biome.BiomeCategory::values, Biome.BiomeCategory::byName).fieldOf("category").forGetter(Biome::getBiomeCategory),
+            Codecs.reporting(Codec.FLOAT.fieldOf("depth"), "depth").forGetter(Biome::getDepth),
+            Codecs.reporting(Codec.FLOAT.fieldOf("scale"), "scale").forGetter(Biome::getScale),
+            Codecs.reporting(specialEffectsCodec.fieldOf("effects"), "effects").forGetter(Biome::getSpecialEffects),
+            biomeGenerationSettingsCodec.forGetter(Biome::getGenerationSettings),
+            MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings),
+            ResourceLocation.CODEC.optionalFieldOf("forge:registry_name").forGetter(b -> Optional.ofNullable(b.getRegistryName()))
+        ).apply(instance, (climate, category, depth, scale, effects, gen, spawns, name) -> ForgeHooks.enhanceBiome(name.orElse(null), climate, category, depth, scale, effects, gen, spawns, instance, BiomeAccessor::cyanide$new)));
     }
 
     public static RegistryReadOps.ResourceAccess wrapResourceAccess(ResourceManager manager)

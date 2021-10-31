@@ -59,7 +59,7 @@ public interface ShapedCodec<A> extends Codec<A>
         return new Impl<>(codec)
         {
             @Override
-            public <T> DataResult<T> decodeShape(DynamicOps<T> ops, T input)
+            public <T> DataResult<?> decodeShape(DynamicOps<T> ops, T input)
             {
                 return DataResult.success(input);
             }
