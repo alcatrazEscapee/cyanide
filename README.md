@@ -4,6 +4,8 @@
 
 *cyanide seems to be something that will make me want to drink cyanide a lot less - Starmute, world generation datapack wizard.*
 
+For [**Forge**](https://www.curseforge.com/minecraft/mc-mods/cyanide-forge) or [**Fabric**](https://www.curseforge.com/minecraft/mc-mods/cyanide-fabric).
+
 A mod which substantially improves Minecraft's data driven world generation error detection and recovery mechanisms. For example, consider the following fairly common error in Vanilla:
 
 ```
@@ -40,7 +42,7 @@ Unknown element name: invalid_heightmap
 
 ### Features
 
-World Generation Data Pack Error Improvements
+Below is a (hopefully, comprehensive) list of all changes, tweaks, and improvements Cyanide makes to vanilla datapack error messages, including locations where the format is narrowed from vanilla in name of clarity.
 
 - Append the file to each error message. (`at: file "data/cyanide/blah/blah.json"`)
 - Append the source datapack to each error message (`at: data pack blah.zip`)
