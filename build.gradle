@@ -1,116 +1,35 @@
-buildscript {
-    repositories {
-        maven { url = 'https://maven.minecraftforge.net' }
-		maven { url = 'https://maven.parchmentmc.org' }
-        maven {
-            url "https://repo.spongepowered.org/repository/maven-public/"
-            content { includeGroup "org.spongepowered" }
-        }
-        mavenCentral()
-    }
-    dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
-        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
-        classpath 'org.parchmentmc:librarian:1.+'
-    }
-}
-
 plugins {
+	id 'fabric-loom' version '0.9-SNAPSHOT'
     id 'org.cadixdev.licenser' version '0.6.1'
-    id 'maven-publish'
-    id 'idea'
+	id 'idea'
 }
 
-apply plugin: 'net.minecraftforge.gradle'
-apply plugin: 'org.parchmentmc.librarian.forgegradle'
-apply plugin: 'org.spongepowered.mixin'
-
-// Allow local mappings customization
-def localProperties = new File('./dev.gradle')
-localProperties.createNewFile()
-
-apply from: 'dev.gradle'
-
-def mappingsChannel = project.hasProperty('mappings_channel') ? mappings_channel : 'official'
-def mappingsVersion = project.hasProperty('mappings_version') ? mappings_version : minecraft_version
-println 'Using mappings: ' + mappingsChannel + ' / ' + mappingsVersion
+sourceCompatibility = JavaVersion.VERSION_16
+targetCompatibility = JavaVersion.VERSION_16
 
 // Use version from environment variable, if set
 def envVersion = System.getenv('VERSION')
 version = envVersion == null ? 'indev' : envVersion
 
+archivesBaseName = "cyanide-fabric-${minecraft_version}"
 group = 'com.github.alcatrazEscapee'
-archivesBaseName = "${mod_id}-forge-${minecraft_version}"
-java.toolchain.languageVersion = JavaLanguageVersion.of(16)
-
-minecraft {
-    mappings channel: mappingsChannel, version: mappingsVersion
-    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
-    
-    runs {
-        client {
-            workingDirectory project.file('run')
-            arg '-mixin.config=' + mod_id + '.mixins.json'
-            property 'forge.logging.console.level', 'debug'
-            property 'cyanide.client_self_test', 'com.alcatrazescapee.cyanide.Cyanide#selfTest'
-            property 'cyanide.enable_dangerous_features', 'true'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            mods {
-                cyanide {
-                    source sourceSets.main
-                }
-            }
-        }
-
-        server {
-            workingDirectory project.file('run')
-            arg '-mixin.config=' + mod_id + '.mixins.json'
-            property 'forge.logging.console.level', 'debug'
-            property 'cyanide.client_self_test', 'com.alcatrazescapee.cyanide.Cyanide#selfTest'
-            property 'cyanide.enable_dangerous_features', 'true'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            mods {
-                cyanide {
-                    source sourceSets.main
-                }
-            }
-        }
-    }
-}
 
 repositories {
     mavenCentral()
-    mavenLocal()
     maven {
-        url "https://repo.spongepowered.org/repository/maven-public/"
-        content { includeGroup "org.spongepowered" }
-    }
-    flatDir {
-        dirs 'libs'
-    }
-}
-
-// Hack to fix a FG bug involving loading non-MC libraries
-configurations {
-    library
-    implementation.extendsFrom library
-}
-minecraft.runs.all {
-    lazyToken('minecraft_classpath') {
-        configurations.library.copyRecursive().resolve().collect { it.absolutePath }.join(File.pathSeparator)
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
     }
 }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    
-    library "org.spongepowered:mixin:${mixin_version}"
-
-    if (System.getProperty("idea.sync.active") != "true") {
-        annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
-    }
+	// To change the versions see the gradle.properties file
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.layered() {
+		officialMojangMappings()
+		parchment("org.parchmentmc.data:parchment-1.17.1:2021.10.31@zip")
+	}
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
@@ -120,20 +39,37 @@ test {
     useJUnitPlatform()
 }
 
+processResources {
+	inputs.property "version", project.version
 
-// Puts the mod version into the jar for mods.toml to read from
-jar {
-    manifest {
-        attributes ([
-            "Implementation-Version": "${project.version}",
-            "MixinConfigs": "${mod_id}.mixins.json"
-        ])
-    }
+	filesMatching("fabric.mod.json") {
+		expand "version": project.version
+	}
 }
 
+tasks.withType(JavaCompile).configureEach {
+	// ensure that the encoding is set to UTF-8, no matter what the system default is
+	// this fixes some edge cases with special characters not displaying correctly
+	// see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
+	// If Javadoc is generated, this must be specified in that task too.
+	it.options.encoding = "UTF-8"
 
-mixin {
-    add sourceSets.main, "${mod_id}.refmap.json"
+	// Minecraft 1.17 (21w19a) upwards uses Java 16.
+	it.options.release = 16
+}
+
+java {
+	withSourcesJar()
+}
+
+jar {
+	from("LICENSE") {
+		rename { "${it}_${project.archivesBaseName}" }
+	}
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/cyanide.accesswidener")
 }
 
 // Automatically apply a license header when running checkLicense / updateLicense
@@ -143,25 +79,7 @@ license {
     include '**/*.java'
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-
-            groupId = 'com.github.alcatrazEscapee'
-            artifactId = "cyanide"
-            version = "${project.version}"
-        }
-    }
-    repositories {
-        mavenLocal()
-    }
-}
-
 task makeTestDataPack(type: Exec) {
-    workingDir "${projectDir}/datapacks"
-    commandLine 'jar', '-cMf', 'example_datapack.zip', 'pack.mcmeta', 'data'
-    doLast {
-        println "Executed!"
-    }
+    workingDir "${projectDir}/datapack"
+    commandLine 'jar', '-cMf', 'test_data_pack.zip', 'pack.mcmeta', 'data'
 }

@@ -5,7 +5,10 @@
 
 package com.alcatrazescapee.cyanide;
 
-import net.minecraftforge.fml.common.Mod;
+import net.fabricmc.api.ModInitializer;
 
-@Mod("cyanide")
-public final class Cyanide {}
+public final class Cyanide implements ModInitializer
+{
+    @Override
+    public void onInitialize() {}
+}

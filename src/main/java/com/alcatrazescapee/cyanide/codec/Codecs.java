@@ -14,8 +14,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.StringRepresentable;
 
-import net.minecraftforge.common.util.Lazy;
-
 import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.*;
@@ -96,17 +94,6 @@ public final class Codecs
         final String expectedIdRange = "[0, " + values.length + ")";
         final String expectedValues = "[" + Arrays.stream(values).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]";
         return fromStringResolver(id, () -> expectedIdRange, () -> expectedValues, Enum::ordinal, i -> values[i], enumName);
-    }
-
-    /**
-     * A variant of {@link #fromEnum(String, Supplier, Function)} for {@link net.minecraftforge.common.IExtensibleEnum}s
-     */
-    public static <E extends Enum<E> & StringRepresentable> Codec<E> fromExtensibleEnum(String id, Supplier<E[]> enumValues, Function<? super String, ? extends E> enumName)
-    {
-        final Lazy<E[]> values = Lazy.concurrentOf(enumValues);
-        final String expectedIdRange = "[0, " + values.get().length + ")";
-        final String expectedValues = "[" + Arrays.stream(values.get()).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]";
-        return fromStringResolver(id, () -> expectedIdRange, () -> expectedValues, Enum::ordinal, i -> values.get()[i], enumName);
     }
 
     /**
