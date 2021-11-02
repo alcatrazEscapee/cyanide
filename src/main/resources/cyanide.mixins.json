@@ -22,6 +22,5 @@
   ],
   "injectors": {
     "defaultRequire": 0
-  },
-  "refmap": "cyanide.refmap.json"
+  }
 }
