@@ -47,7 +47,7 @@ public final class Codecs
 
     public static <E> Codec<List<E>> list(Codec<E> elementCodec)
     {
-        return new ImprovedListCodec<>(elementCodec, (e, i) -> "at index " + i);
+        return new ImprovedListCodec<>(elementCodec, (e, i) -> e + " at index " + i);
     }
 
     public static <E> Codec<List<E>> list(Codec<E> elementCodec, ImprovedListCodec.Reporter indexReporter)

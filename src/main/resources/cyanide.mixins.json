@@ -10,12 +10,17 @@
     "RegistryAccessMixin",
     "RegistryFileCodecMixin",
     "RegistryReadOpsMixin",
+    "SinglePoolElementMixin",
+    "StructureTemplatePoolMixin",
     "accessor.BiomeAccessor",
     "accessor.BiomeGenerationSettingsAccessor",
     "accessor.BiomeSpecialEffectsAccessor",
     "accessor.DelegatingOpsAccessor",
     "accessor.RegistryReadOpsAccessor",
-    "accessor.RegistryWriteOpsAccessor"
+    "accessor.RegistryWriteOpsAccessor",
+    "accessor.SinglePoolElementAccessor",
+    "accessor.StructureProcessorAccessor",
+    "accessor.StructureTemplatePoolAccessor"
   ],
   "client": [
   ],

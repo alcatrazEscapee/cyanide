@@ -1,0 +1,48 @@
+{
+  "name": "minecraft:village/plains/houses",
+  "fallback": "minecraft:village/plains/terminators",
+  "elements": [
+    {
+      "weight": 2,
+      "element": {
+        "location": "minecraft:village/plains/houses/plains_small_house_1",
+        "processors": "minecraft:empty",
+        "projection": "rigid",
+        "element_type": "minecraft:legacy_single_pool_element"
+      }
+    },
+    {
+      "weight": 2,
+      "element": {
+        "location": "minecraft:village/plains/houses/plains_small_house_2",
+        "processors": "minecraft:invalid_processor_list_name",
+        "projection": "rigid",
+        "element_type": "minecraft:legacy_single_pool_element"
+      }
+    },
+    {
+      "weight": 2,
+      "element": {
+        "location": "minecraft:village/plains/houses/plains_small_house_3",
+        "processors": "minecraft:empty",
+        "projection": "rigid",
+        "element_type": "minecraft:legacy_single_pool_element"
+      }
+    },
+    {
+      "weight": 2,
+      "element": {
+        "location": "minecraft:village/plains/houses/plains_small_house_4",
+        "processors": "minecraft:empty",
+        "projection": "rigid",
+        "element_type": "minecraft:legacy_single_pool_element"
+      }
+    },
+    {
+      "weight": 10,
+      "element": {
+        "element_type": "minecraft:empty_pool_element"
+      }
+    }
+  ]
+}
