@@ -1,3 +1,8 @@
+/*
+ * Part of the Cyanide mod.
+ * Licensed under MIT. See the project LICENSE.txt for details.
+ */
+
 package com.alcatrazescapee.cyanide.mixin.accessor;
 
 import java.util.function.Supplier;
