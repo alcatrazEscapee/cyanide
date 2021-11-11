@@ -72,6 +72,9 @@ Unknown category name: not_a_category, expected one of [none, taiga, extreme_hil
 	at: data pack test_data_pack.zip
 ```
 
+- Template pools have additional error reporting identifying where in the file errors had occurred.
+- Invalid processor lists in template pools will be caught at datapack load instead of at runtime, causing hard crashes.
+- Invalid registry entries will error at datapack load rather than either defaulting, or returning null at runtime.
 - Improvements for log messages for invalid loot tables and recipes:
   - Stack traces are not printed to the log.
   - Offending file names are identified and printed instead.
