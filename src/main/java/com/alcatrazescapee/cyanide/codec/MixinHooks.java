@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.google.gson.JsonParseException;
@@ -17,6 +18,8 @@ import org.apache.logging.log4j.Logger;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.WritableRegistry;
+import net.minecraft.resources.RegistryFileCodec;
 import net.minecraft.resources.RegistryReadOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -31,17 +34,26 @@ import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
+import net.minecraft.world.level.levelgen.feature.structures.SinglePoolElement;
+import net.minecraft.world.level.levelgen.feature.structures.StructurePoolElement;
+import net.minecraft.world.level.levelgen.feature.structures.StructureTemplatePool;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import net.minecraft.world.level.levelgen.surfacebuilders.ConfiguredSurfaceBuilder;
 
 import com.alcatrazescapee.cyanide.mixin.accessor.*;
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.Lifecycle;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 public final class MixinHooks
 {
     private static final GenerationStep.Decoration[] DECORATION_STEPS = GenerationStep.Decoration.values();
+    private static Codec<Supplier<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
 
     public static void readRegistries(RegistryAccess registryAccess, RegistryReadOps<?> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData)
     {
@@ -93,6 +105,20 @@ public final class MixinHooks
             catch (IOException e) { /* Ignore */ }
         }
         return result;
+    }
+
+    public static <E> DataResult<Supplier<E>> registryElementDataResult(ResourceKey<? extends Registry<E>> registryKey, WritableRegistry<E> registry, ResourceLocation id)
+    {
+        final ResourceKey<E> elementKey = ResourceKey.create(registryKey, id);
+        if (registry.containsKey(elementKey))
+        {
+            return DataResult.success(() -> registry.get(elementKey), Lifecycle.stable());
+        }
+        else
+        {
+            // We don't name it here, since the name will be present in at least the file, and possibly a 'at: reference to' which is additionally appended
+            return DataResult.error("Reference to unknown registry element", () -> registry.get(elementKey), Lifecycle.stable());
+        }
     }
 
     public static Codec<Biome> makeBiomeCodec()
@@ -160,6 +186,25 @@ public final class MixinHooks
         ).apply(instance, BiomeAccessor::cyanide$new));
     }
 
+    public static Codec<StructureTemplatePool> makeStructureTemplatePoolCodec()
+    {
+        // Use reporting for some fields, and improved list codec
+        return RecordCodecBuilder.create(instance -> instance.group(
+            ResourceLocation.CODEC.fieldOf("name").forGetter(StructureTemplatePool::getName),
+            ResourceLocation.CODEC.fieldOf("fallback").forGetter(StructureTemplatePool::getFallback),
+            Codecs.reporting(Codecs.list(Codec.mapPair(
+                StructurePoolElement.CODEC.fieldOf("element"),
+                Codec.intRange(1, 150).fieldOf("weight")
+            ).codec()).fieldOf("elements"), "elements").forGetter(c -> ((StructureTemplatePoolAccessor) c).cyanide$getRawTemplates())
+        ).apply(instance, StructureTemplatePool::new));
+    }
+
+    public static <E extends SinglePoolElement> RecordCodecBuilder<E, Supplier<StructureProcessorList>> makeSinglePoolElementProcessorsCodec()
+    {
+        // Use improved structure processor list codec and add a reporting field to 'processors'
+        return Codecs.reporting(structureProcessorListCodec().fieldOf("processors"), "processors").forGetter(e -> ((SinglePoolElementAccessor) e).cyanide$getProcessors());
+    }
+
     public static RegistryReadOps.ResourceAccess wrapResourceAccess(ResourceManager manager)
     {
         return new ResourceAccessWrapper(RegistryReadOps.ResourceAccess.forResourceManager(manager), manager);
@@ -184,6 +229,24 @@ public final class MixinHooks
     public static <T> T cast(Object o)
     {
         return (T) o;
+    }
+
+    private static Codec<Supplier<StructureProcessorList>> structureProcessorListCodec()
+    {
+        if (STRUCTURE_PROCESSOR_LIST_CODEC == null)
+        {
+            // Use improved list and either codecs, and use registry entry codec instead of the registry file codec
+            // Add reporting codec for the processors field
+            final Codec<StructureProcessor> singleCodec = Registry.STRUCTURE_PROCESSOR.dispatch("processor_type", c -> ((StructureProcessorAccessor) c).cyanide$getType(), StructureProcessorType::codec);
+            final Codec<StructureProcessorList> listObjectCodec = Codecs.list(singleCodec)
+                .xmap(StructureProcessorList::new, StructureProcessorList::list);
+            Codec<StructureProcessorList> directCodec = Codecs.either(
+                ShapedCodec.likeMap(listObjectCodec.fieldOf("processors").codec()),
+                ShapedCodec.likeList(listObjectCodec)
+            ).xmap(e -> e.map(Function.identity(), Function.identity()), Either::left);
+            STRUCTURE_PROCESSOR_LIST_CODEC = Codecs.registryEntryCodec(Registry.PROCESSOR_LIST_REGISTRY, directCodec);
+        }
+        return STRUCTURE_PROCESSOR_LIST_CODEC;
     }
 
     private static String registryFile(ResourceKey<? extends Registry<?>> registry, ResourceLocation resource)

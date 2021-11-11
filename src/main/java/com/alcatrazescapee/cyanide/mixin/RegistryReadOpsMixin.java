@@ -19,6 +19,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.Lifecycle;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -54,8 +55,18 @@ public abstract class RegistryReadOpsMixin
         return dataResult.flatMap(readAndRegisterElement).setPartial(registry);
     }
 
+    /**
+     * Vanilla does a very strange thing: If we try and parse an object from the {@code resources} and it returns an empty {@link java.util.Optional}, it then assumes that is a SUCCESS and will just happily return a data result that queries from the registry.
+     * This is... broken, for many reasons. Most notably, because registry entries that return null later on are kind of horrible.
+     */
+    @Redirect(method = "readAndRegisterElement", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/DataResult;success(Ljava/lang/Object;Lcom/mojang/serialization/Lifecycle;)Lcom/mojang/serialization/DataResult;", remap = false), require = 1)
+    private <E> DataResult<Supplier<E>> checkRegistryElementsThatFailToParse(E result, Lifecycle lifecycle, ResourceKey<? extends Registry<E>> registryKey, WritableRegistry<E> registry, Codec<E> elementCodec, ResourceLocation id)
+    {
+        return MixinHooks.registryElementDataResult(registryKey, registry, id);
+    }
+
     @Inject(method = "readAndRegisterElement", at = @At(value = "RETURN"), cancellable = true)
-    private <E> void readAndRegisterElement(ResourceKey<? extends Registry<E>> registryKey, WritableRegistry<E> registry, Codec<E> elementCodec, ResourceLocation resourceId, CallbackInfoReturnable<DataResult<Supplier<E>>> cir)
+    private <E> void appendFileToReadAndRegisterElement(ResourceKey<? extends Registry<E>> registryKey, WritableRegistry<E> registry, Codec<E> elementCodec, ResourceLocation resourceId, CallbackInfoReturnable<DataResult<Supplier<E>>> cir)
     {
         cir.setReturnValue(MixinHooks.appendRegistryFileError(cir.getReturnValue(), MixinHooks.cast(this), resourceId, registryKey));
     }
