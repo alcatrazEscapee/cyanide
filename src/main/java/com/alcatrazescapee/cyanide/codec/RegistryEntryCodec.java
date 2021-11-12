@@ -60,31 +60,26 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
             }
 
             @SuppressWarnings("unchecked") final DataResult<Pair<ResourceLocation, T>> optionalResult = ResourceLocation.CODEC.decode(((DelegatingOpsAccessor<T>) registryOps).cyanide$getDelegate(), input);
-            if (optionalResult.result().isEmpty())
+            if (optionalResult.result().isPresent())
             {
-                return DataResult.error("Cannot decode  " + optionalResult.error().map(Object::toString).orElse("Unknown id?") + " from registry " + registryKey.location());
-            }
+                final Pair<ResourceLocation, T> result = optionalResult.result().get();
+                final ResourceLocation id = result.getFirst();
 
-            final Pair<ResourceLocation, T> result = optionalResult.result().get();
-            final ResourceLocation id = result.getFirst();
-
-            DataResult<Supplier<E>> decoded = ((RegistryReadOpsAccessor) registryOps).cyanide$readAndRegisterElement(registryKey, optionalRegistry.get(), elementCodec, id);
-            if (decoded.error().isPresent())
-            {
-                decoded = MixinHooks.appendRegistryReferenceError(decoded, id, registryKey);
+                DataResult<Supplier<E>> decoded = ((RegistryReadOpsAccessor) registryOps).cyanide$readAndRegisterElement(registryKey, optionalRegistry.get(), elementCodec, id);
+                if (decoded.error().isPresent())
+                {
+                    decoded = MixinHooks.appendRegistryReferenceError(decoded, id, registryKey);
+                }
+                return decoded.map(e -> Pair.of(e, result.getSecond()));
             }
-            return decoded.map(e -> Pair.of(e, result.getSecond()));
         }
-        else
+        DataResult<Pair<Supplier<E>, T>> result = elementCodec.decode(ops, input)
+            .map(r -> r.mapFirst(e -> () -> e));
+        if (result.error().isPresent())
         {
-            DataResult<Pair<Supplier<E>, T>> result = elementCodec.decode(ops, input)
-                .map(r -> r.mapFirst(e -> () -> e));
-            if (result.error().isPresent())
-            {
-                result = MixinHooks.appendRegistryError(result, registryKey);
-            }
-            return result;
+            result = MixinHooks.appendRegistryError(result, registryKey);
         }
+        return result;
     }
 
     public String toString()
