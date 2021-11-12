@@ -81,5 +81,5 @@ license {
 
 task makeTestDataPack(type: Exec) {
     workingDir "${projectDir}/datapack"
-    commandLine 'jar', '-cMf', 'test_data_pack.zip', 'pack.mcmeta', 'data'
+    commandLine 'jar', '-cMf', '../example_datapack.zip', 'pack.mcmeta', 'data'
 }
