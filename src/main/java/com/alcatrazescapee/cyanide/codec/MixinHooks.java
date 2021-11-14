@@ -191,19 +191,6 @@ public final class MixinHooks
         ).apply(instance, (climate, category, depth, scale, effects, gen, spawns, name) -> ForgeHooks.enhanceBiome(name.orElse(null), climate, category, depth, scale, effects, gen, spawns, instance, BiomeAccessor::cyanide$new)));
     }
 
-    public static Codec<StructureTemplatePool> makeStructureTemplatePoolCodec()
-    {
-        // Use reporting for some fields, and improved list codec
-        return RecordCodecBuilder.create(instance -> instance.group(
-            ResourceLocation.CODEC.fieldOf("name").forGetter(StructureTemplatePool::getName),
-            ResourceLocation.CODEC.fieldOf("fallback").forGetter(StructureTemplatePool::getFallback),
-            Codecs.reporting(Codecs.list(Codec.mapPair(
-                StructurePoolElement.CODEC.fieldOf("element"),
-                Codec.intRange(1, 150).fieldOf("weight")
-            ).codec()).fieldOf("elements"), "elements").forGetter(c -> ((StructureTemplatePoolAccessor) c).cyanide$getRawTemplates())
-        ).apply(instance, StructureTemplatePool::new));
-    }
-
     public static <E extends SinglePoolElement> RecordCodecBuilder<E, Supplier<StructureProcessorList>> makeSinglePoolElementProcessorsCodec()
     {
         // Use improved structure processor list codec and add a reporting field to 'processors'

@@ -5,18 +5,19 @@
 
 package com.alcatrazescapee.cyanide.mixin;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 import net.minecraft.core.Registry;
+import net.minecraft.world.level.levelgen.feature.structures.StructurePoolElement;
 import net.minecraft.world.level.levelgen.feature.structures.StructureTemplatePool;
 
 import com.alcatrazescapee.cyanide.codec.Codecs;
-import com.alcatrazescapee.cyanide.codec.MixinHooks;
+import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Mutable;
-import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(StructureTemplatePool.class)
 public abstract class StructureTemplatePoolMixin
@@ -26,7 +27,13 @@ public abstract class StructureTemplatePoolMixin
 
     static
     {
-        DIRECT_CODEC = MixinHooks.makeStructureTemplatePoolCodec();
         CODEC = Codecs.registryEntryCodec(Registry.TEMPLATE_POOL_REGISTRY, DIRECT_CODEC);
+    }
+
+    @Dynamic("lambda method in <cinit>")
+    @Redirect(method = "*", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/Codec;listOf()Lcom/mojang/serialization/Codec;"))
+    private static Codec<List<Pair<StructurePoolElement, Integer>>> addReportingToCodec(Codec<Pair<StructurePoolElement, Integer>> codec)
+    {
+        return Codecs.list(codec);
     }
 }
