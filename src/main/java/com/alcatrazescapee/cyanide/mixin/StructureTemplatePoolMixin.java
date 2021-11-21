@@ -31,7 +31,7 @@ public abstract class StructureTemplatePoolMixin
     }
 
     @Dynamic("lambda method in <cinit>")
-    @Redirect(method = "*", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/Codec;listOf()Lcom/mojang/serialization/Codec;"))
+    @Redirect(method = "*", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/Codec;listOf()Lcom/mojang/serialization/Codec;", remap = false))
     private static Codec<List<Pair<StructurePoolElement, Integer>>> addReportingToCodec(Codec<Pair<StructurePoolElement, Integer>> codec)
     {
         return Codecs.list(codec);
