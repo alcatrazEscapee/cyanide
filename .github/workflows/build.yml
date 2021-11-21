@@ -44,7 +44,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.get_version.outputs.result }}
+          tag_name: v${{ steps.get_version.outputs.result }}-forge
           release_name: Cyanide 1.17.1-${{ steps.get_version.outputs.result }} (Forge)
           body: |
             [This was an automatic build]
