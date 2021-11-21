@@ -12,6 +12,7 @@
     "RegistryReadOpsMixin",
     "SinglePoolElementMixin",
     "StructureTemplatePoolMixin",
+    "WorldGenSettingsComponentMixin",
     "accessor.BiomeAccessor",
     "accessor.BiomeClimateSettingsAccessor",
     "accessor.BiomeGenerationSettingsAccessor",
@@ -24,6 +25,7 @@
     "accessor.StructureTemplatePoolAccessor"
   ],
   "client": [
+    "client.MinecraftMixin"
   ],
   "injectors": {
     "defaultRequire": 0

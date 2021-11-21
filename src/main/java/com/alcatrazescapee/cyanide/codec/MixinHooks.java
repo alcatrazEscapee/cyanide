@@ -14,12 +14,12 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.google.gson.JsonParseException;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.WritableRegistry;
-import net.minecraft.resources.RegistryFileCodec;
 import net.minecraft.resources.RegistryReadOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -31,12 +31,11 @@ import net.minecraft.util.StringRepresentable;
 import net.minecraft.util.Unit;
 import net.minecraft.world.level.biome.*;
 import net.minecraft.world.level.levelgen.GenerationStep;
+import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.feature.structures.SinglePoolElement;
-import net.minecraft.world.level.levelgen.feature.structures.StructurePoolElement;
-import net.minecraft.world.level.levelgen.feature.structures.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
@@ -53,7 +52,19 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 public final class MixinHooks
 {
     private static final GenerationStep.Decoration[] DECORATION_STEPS = GenerationStep.Decoration.values();
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private static Codec<Supplier<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
+
+    public static Optional<WorldGenSettings> printWorldGenSettingsError(DataResult<WorldGenSettings> result)
+    {
+        return result.resultOrPartial(err -> LOGGER.error(
+            "Error parsing worldgen settings after loading data packs\n" +
+            "(This is usually an error due to invalid dimensions.)\n\n" +
+            err.replaceAll("; ", "\n") +
+            "\n"
+            ));
+    }
 
     public static void readRegistries(RegistryAccess registryAccess, RegistryReadOps<?> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData)
     {
