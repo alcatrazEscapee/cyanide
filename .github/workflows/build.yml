@@ -1,0 +1,63 @@
+name: Build + Publish
+
+on:
+  push:
+    tags:
+    - 'v*-forge'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up JDK 16
+        uses: actions/setup-java@v2
+        with:
+          java-version: '16'
+          distribution: 'adopt'
+      - uses: actions/cache@v2
+        name: Cache downloaded files
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Get Version
+        id: get_version
+        uses: actions/github-script@0.4.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            return '${{ github.ref }}'.replace('refs/tags/v', '').replace('-forge', '');
+      - name: Build
+        run: ./gradlew build
+        env:
+          VERSION: ${{ steps.get_version.outputs.result }}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.get_version.outputs.result }}
+          release_name: Cyanide 1.17.1-${{ steps.get_version.outputs.result }} (Forge)
+          body: |
+            [This was an automatic build]
+            // todo: add changelog
+          draft: true
+          prerelease: false
+      - name: Upload Main Jar
+        id: upload_main_jar
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/libs/cyanide-forge-1.17.1-${{ steps.get_version.outputs.result }}.jar
+          asset_name: cyanide-forge-1.17.1-${{ steps.get_version.outputs.result }}.jar
+          asset_content_type: application/java-archive
