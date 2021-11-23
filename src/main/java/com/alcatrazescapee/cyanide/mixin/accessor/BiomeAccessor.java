@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface BiomeAccessor
 {
     @Invoker("<init>")
-    static Biome cyanide$new(Biome.ClimateSettings climateSettings, Biome.BiomeCategory category, float depth, float scale, BiomeSpecialEffects specialEffects, BiomeGenerationSettings generationSettings, MobSpawnSettings mobSettings)
+    static Biome cyanide$new(Biome.ClimateSettings climateSettings, Biome.BiomeCategory category, BiomeSpecialEffects specialEffects, BiomeGenerationSettings generationSettings, MobSpawnSettings mobSettings)
     {
         throw new AssertionError();
     }

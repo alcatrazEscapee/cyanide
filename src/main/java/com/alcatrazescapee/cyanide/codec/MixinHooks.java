@@ -23,6 +23,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.WritableRegistry;
 import net.minecraft.resources.RegistryReadOps;
+import net.minecraft.resources.RegistryResourceAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
@@ -38,10 +39,11 @@ import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.feature.structures.SinglePoolElement;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
-import net.minecraft.world.level.levelgen.surfacebuilders.ConfiguredSurfaceBuilder;
 
 import net.minecraftforge.common.ForgeHooks;
 
@@ -102,7 +104,7 @@ public final class MixinHooks
         return result.mapError(e -> appendErrorLocation(e, "reference to \"" + id + "\" from " + registry.location()));
     }
 
-    public static <E> DataResult<E> appendRegistryFileError(DataResult<E> result, RegistryReadOps<?> ops, ResourceLocation id, ResourceKey<? extends Registry<?>> registry)
+    public static <E> DataResult<E> appendRegistryFileError(DataResult<E> result, RegistryReadOps<?> ops, ResourceKey<? extends Registry<?>> registry, ResourceLocation id)
     {
         result = result.mapError(e -> appendErrorLocation(e, "file \"" + registryFile(registry, id) + '"'));
         return appendRegistryEntrySourceError(result, ops, registry, id);
@@ -164,19 +166,27 @@ public final class MixinHooks
             Codecs.optionalFieldOf(Music.CODEC, "music").forGetter(BiomeSpecialEffects::getBackgroundMusic)
         ).apply(instance, BiomeSpecialEffectsAccessor::cyanide$new));
 
+        // Add more Codecs.reporting() calls
+        // Replace the Codec.list() with one that has indexes
+        // Don't use the codec directly, instead use an improved registry entry codec implementation
+        final Codec<PlacedFeature> placedFeatureCodec = RecordCodecBuilder.create(instance -> instance.group(
+            Codecs.reporting(ConfiguredFeature.CODEC.fieldOf("feature"), "feature").forGetter(c -> MixinHooks.<PlacedFeatureAccessor>cast(c).cyanide$getFeature()),
+            Codecs.reporting(Codecs.list(PlacementModifier.CODEC).fieldOf("placement"), "placement").forGetter(PlacedFeature::getPlacement)
+        ).apply(instance, PlacedFeature::new));
+        final Codec<List<Supplier<PlacedFeature>>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registry.PLACED_FEATURE_REGISTRY, placedFeatureCodec);
+
         // Remove promotePartial calls, as logging at this level is pointless since we don't have a file or a registry name
         // Replace ExtraCodecs calls with Codecs, that include names for what is null or invalid
         // Improve the feature list with one that reports generation steps
         // Add additional calls to Codecs.reporting() to contextualize where things are going wrong.
         final MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codecs.nonNullSupplier(ConfiguredSurfaceBuilder.CODEC.fieldOf("surface_builder"), "surface_builder").forGetter(BiomeGenerationSettings::getSurfaceBuilder),
             Codecs.reporting(Codec.simpleMap(
                 GenerationStep.Carving.CODEC,
                 Codecs.nonNullSupplierList(ConfiguredWorldCarver.LIST_CODEC, "carver"),
                 StringRepresentable.keys(GenerationStep.Carving.values())
             ).fieldOf("carvers"), "carvers").forGetter(c -> ((BiomeGenerationSettingsAccessor) c).cyanide$getCarvers()),
             Codecs.list(
-                Codecs.nonNullSupplierList(ConfiguredFeature.LIST_CODEC, "feature"),
+                Codecs.nonNullSupplierList(placedFeatureListCodec, "feature"),
                 (e, i) -> {
                     if (i >= 0 && i < DECORATION_STEPS.length)
                     {
@@ -184,8 +194,7 @@ public final class MixinHooks
                     }
                     return appendErrorLocation(e, "\"features\", unknown step, index " + i);
                 }
-            ).fieldOf("features").forGetter(BiomeGenerationSettings::features),
-            Codecs.nonNullSupplierList(ConfiguredStructureFeature.LIST_CODEC, "structure start").fieldOf("starts").forGetter(c -> (List<Supplier<ConfiguredStructureFeature<?, ?>>>) c.structures())
+            ).fieldOf("features").forGetter(BiomeGenerationSettings::features)
         ).apply(instance, BiomeGenerationSettingsAccessor::cyanide$new));
 
         // Add Codecs.reporting() to some fields
@@ -193,8 +202,6 @@ public final class MixinHooks
         return RecordCodecBuilder.create(instance -> instance.group(
             climateSettingsCodec.forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getClimateSettings()),
             Codecs.fromEnum("category", Biome.BiomeCategory::values, Biome.BiomeCategory::byName).fieldOf("category").forGetter(Biome::getBiomeCategory),
-            Codecs.reporting(Codec.FLOAT.fieldOf("depth"), "depth").forGetter(Biome::getDepth),
-            Codecs.reporting(Codec.FLOAT.fieldOf("scale"), "scale").forGetter(Biome::getScale),
             Codecs.reporting(specialEffectsCodec.fieldOf("effects"), "effects").forGetter(Biome::getSpecialEffects),
             biomeGenerationSettingsCodec.forGetter(Biome::getGenerationSettings),
             MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings),
@@ -208,9 +215,9 @@ public final class MixinHooks
         return Codecs.reporting(structureProcessorListCodec().fieldOf("processors"), "processors").forGetter(e -> ((SinglePoolElementAccessor) e).cyanide$getProcessors());
     }
 
-    public static RegistryReadOps.ResourceAccess wrapResourceAccess(ResourceManager manager)
+    public static RegistryResourceAccess wrapResourceAccess(ResourceManager manager)
     {
-        return new ResourceAccessWrapper(RegistryReadOps.ResourceAccess.forResourceManager(manager), manager);
+        return new ResourceAccessWrapper(RegistryResourceAccess.forResourceManager(manager), manager);
     }
 
     public static void cleanLootTableError(Logger logger, String message, Object p0, Object p1)
@@ -234,14 +241,16 @@ public final class MixinHooks
         return (T) o;
     }
 
+    /**
+     * @see StructureProcessorType
+     */
     private static Codec<Supplier<StructureProcessorList>> structureProcessorListCodec()
     {
         if (STRUCTURE_PROCESSOR_LIST_CODEC == null)
         {
             // Use improved list and either codecs, and use registry entry codec instead of the registry file codec
             // Add reporting codec for the processors field
-            final Codec<StructureProcessor> singleCodec = Registry.STRUCTURE_PROCESSOR.dispatch("processor_type", c -> ((StructureProcessorAccessor) c).cyanide$getType(), StructureProcessorType::codec);
-            final Codec<StructureProcessorList> listObjectCodec = Codecs.list(singleCodec)
+            final Codec<StructureProcessorList> listObjectCodec = Codecs.list(StructureProcessorType.SINGLE_CODEC)
                 .xmap(StructureProcessorList::new, StructureProcessorList::list);
             Codec<StructureProcessorList> directCodec = Codecs.either(
                 ShapedCodec.likeMap(listObjectCodec.fieldOf("processors").codec()),
@@ -259,7 +268,7 @@ public final class MixinHooks
     }
 
     /**
-     * Mirrors the logic used in {@link net.minecraft.resources.RegistryReadOps.ResourceAccess#forResourceManager(ResourceManager)} for {@code parseElement()}.
+     * Mirrors the logic used in {@link net.minecraft.resources.RegistryResourceAccess#forResourceManager(ResourceManager)} for {@code parseElement()}.
      * Used to refer to a registry and element pair by it's datapack defined file location.
      */
     private static ResourceLocation registryFileLocation(ResourceKey<? extends Registry<?>> registry, ResourceLocation resource)

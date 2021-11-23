@@ -11,6 +11,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.WritableRegistry;
 import net.minecraft.resources.RegistryReadOps;
+import net.minecraft.resources.RegistryResourceAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 
@@ -27,8 +28,8 @@ public interface RegistryReadOpsAccessor
     RegistryAccess cyanide$getRegistryAccess();
 
     @Accessor("resources")
-    RegistryReadOps.ResourceAccess cyanide$getResources();
+    RegistryResourceAccess cyanide$getResources();
 
     @Invoker("readAndRegisterElement")
-    <E> DataResult<Supplier<E>> cyanide$readAndRegisterElement(ResourceKey<? extends Registry<E>> registryKey, final WritableRegistry<E> registry, Codec<E> elementCodec, ResourceLocation id);
+    <E> DataResult<Supplier<E>> cyanide$readAndRegisterElement(ResourceKey<? extends Registry<E>> registryKey, final WritableRegistry<E> registry, Codec<E> elementCodec, ResourceKey<E> elementKey);
 }

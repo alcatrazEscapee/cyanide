@@ -14,7 +14,7 @@
   "carvers": {
     "air": [
       "minecraft:cave",
-      "minecraft:very_beeg_cave",
+      "minecraft:cave_extra_underground",
       "minecraft:canyon"
     ]
   },

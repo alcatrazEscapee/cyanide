@@ -64,8 +64,9 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
             {
                 final Pair<ResourceLocation, T> result = optionalResult.result().get();
                 final ResourceLocation id = result.getFirst();
+                final ResourceKey<E> key = ResourceKey.create(registryKey, id);
 
-                DataResult<Supplier<E>> decoded = ((RegistryReadOpsAccessor) registryOps).cyanide$readAndRegisterElement(registryKey, optionalRegistry.get(), elementCodec, id);
+                DataResult<Supplier<E>> decoded = ((RegistryReadOpsAccessor) registryOps).cyanide$readAndRegisterElement(registryKey, optionalRegistry.get(), elementCodec, key);
                 if (decoded.error().isPresent())
                 {
                     decoded = MixinHooks.appendRegistryReferenceError(decoded, id, registryKey);

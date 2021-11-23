@@ -28,7 +28,7 @@ public abstract class RecipeManagerMixin
     /**
      * Improve logging message, don't dump stacktrace
      */
-    @Redirect(method = "apply", at = @At(value = "INVOKE", target = "Lorg/apache/logging/log4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
+    @Redirect(method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V", at = @At(value = "INVOKE", target = "Lorg/apache/logging/log4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private void simplifyRecipeErrors(Logger logger, String message, Object p0, Object p1)
     {
         MixinHooks.cleanRecipeError(logger, message, p0, p1);
@@ -37,7 +37,7 @@ public abstract class RecipeManagerMixin
     /**
      * Count recipes, not recipe types. Fix MC-190122
      */
-    @Redirect(method = "apply", at = @At(value = "INVOKE", target = "Ljava/util/Map;size()I", remap = false))
+    @Redirect(method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V", at = @At(value = "INVOKE", target = "Ljava/util/Map;size()I", remap = false))
     private int correctRecipeCount(Map<RecipeType<?>, ImmutableMap.Builder<ResourceLocation, Recipe<?>>> map)
     {
         return recipes.values().stream().mapToInt(Map::size).sum();

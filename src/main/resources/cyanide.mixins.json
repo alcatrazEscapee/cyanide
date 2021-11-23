@@ -17,6 +17,7 @@
     "accessor.BiomeGenerationSettingsAccessor",
     "accessor.BiomeSpecialEffectsAccessor",
     "accessor.DelegatingOpsAccessor",
+    "accessor.PlacedFeatureAccessor",
     "accessor.RegistryReadOpsAccessor",
     "accessor.RegistryWriteOpsAccessor",
     "accessor.SinglePoolElementAccessor",

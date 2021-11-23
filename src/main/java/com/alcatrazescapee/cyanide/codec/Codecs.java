@@ -14,8 +14,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.StringRepresentable;
 
-import net.minecraftforge.common.util.Lazy;
-
 import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.*;
@@ -93,53 +91,16 @@ public final class Codecs
     public static <E extends Enum<E> & StringRepresentable> Codec<E> fromEnum(String id, Supplier<E[]> enumValues, Function<? super String, ? extends E> enumName)
     {
         final E[] values = enumValues.get();
-        final String expectedIdRange = "[0, " + values.length + ")";
-        final String expectedValues = "[" + Arrays.stream(values).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]";
-        return fromStringResolver(id, () -> expectedIdRange, () -> expectedValues, Enum::ordinal, i -> values[i], enumName);
-    }
-
-    /**
-     * A variant of {@link #fromEnum(String, Supplier, Function)} for {@link net.minecraftforge.common.IExtensibleEnum}s
-     */
-    public static <E extends Enum<E> & StringRepresentable> Codec<E> fromExtensibleEnum(String id, Supplier<E[]> enumValues, Function<? super String, ? extends E> enumName)
-    {
-        final Lazy<E[]> values = Lazy.concurrentOf(enumValues);
-        final String expectedIdRange = "[0, " + values.get().length + ")";
-        final String expectedValues = "[" + Arrays.stream(values.get()).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]";
-        return fromStringResolver(id, () -> expectedIdRange, () -> expectedValues, Enum::ordinal, i -> values.get()[i], enumName);
-    }
-
-    /**
-     * Like {@link StringRepresentable#fromStringResolver(ToIntFunction, IntFunction, Function)} but with named errors.
-     */
-    public static <E extends StringRepresentable> Codec<E> fromStringResolver(String id, Supplier<String> expectedIdRange, Supplier<String> expectedValues, ToIntFunction<E> objectToIdMapper, IntFunction<E> idToObjectMapper, Function<? super String, ? extends E> nameToObjectMapper)
-    {
-        return new Codec<>()
-        {
-            @Override
-            public <T> DataResult<T> encode(E input, DynamicOps<T> ops, T prefix)
-            {
-                return ops.compressMaps() ?
-                    ops.mergeToPrimitive(prefix, ops.createInt(objectToIdMapper.applyAsInt(input))) :
-                    ops.mergeToPrimitive(prefix, ops.createString(input.getSerializedName()));
-            }
-
-            @Override
-            public <T> DataResult<Pair<E, T>> decode(DynamicOps<T> ops, T input)
-            {
-                return ops.compressMaps() ?
-                    ops.getNumberValue(input)
-                        .flatMap(index -> Optional.ofNullable(idToObjectMapper.apply(index.intValue()))
-                            .map(DataResult::success)
-                            .orElseGet(() -> DataResult.error("Unknown " + id + " id: " + index + ", expected in " + expectedIdRange.get())))
-                        .map(value -> Pair.of(value, ops.empty())) :
-                    ops.getStringValue(input)
-                        .flatMap(name -> Optional.ofNullable(nameToObjectMapper.apply(name))
-                            .map(DataResult::success)
-                            .orElseGet(() -> DataResult.error("Unknown " + id + " name: " + name + ", expected one of " + expectedValues.get())))
-                        .map(value -> Pair.of(value, ops.empty()));
-            }
-        };
+        return ExtraCodecs.orCompressed(
+            Codec.STRING.flatXmap(
+                name -> Optional.ofNullable(enumName.apply(name))
+                    .map(DataResult::success)
+                    .orElseGet(() -> DataResult.error("Unknown " + id + " name: " + name + ", expected one of [" + Arrays.stream(values).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]")),
+                value -> Optional.ofNullable(value.getSerializedName())
+                    .map(DataResult::success)
+                    .orElseGet(() -> DataResult.error("Unknown name for " + id + ": " + value))),
+            ExtraCodecs.idResolverCodec(Enum::ordinal, index -> index >= 0 && index < values.length ? values[index] : null, -1)
+        );
     }
 
     /**
