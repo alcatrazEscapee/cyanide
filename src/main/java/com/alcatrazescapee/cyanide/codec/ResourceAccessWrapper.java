@@ -12,6 +12,7 @@ import java.util.OptionalInt;
 import com.google.gson.JsonElement;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.RegistryReadOps;
+import net.minecraft.resources.RegistryResourceAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -21,16 +22,16 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Decoder;
 import com.mojang.serialization.DynamicOps;
 
-public record ResourceAccessWrapper(RegistryReadOps.ResourceAccess delegate, ResourceManager manager) implements RegistryReadOps.ResourceAccess
+public record ResourceAccessWrapper(RegistryResourceAccess delegate, ResourceManager manager) implements RegistryResourceAccess
 {
     @Override
-    public Collection<ResourceLocation> listResources(ResourceKey<? extends Registry<?>> registryKey)
+    public <E> Collection<ResourceKey<E>> listResources(ResourceKey<? extends Registry<E>> resourceKey)
     {
-        return delegate.listResources(registryKey);
+        return delegate.listResources(resourceKey);
     }
 
     @Override
-    public <E> Optional<DataResult<Pair<E, OptionalInt>>> parseElement(DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<E>> registryKey, ResourceKey<E> resourceKey, Decoder<E> decoder)
+    public <E> Optional<DataResult<ParsedEntry<E>>> parseElement(DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<E>> registryKey, ResourceKey<E> resourceKey, Decoder<E> decoder)
     {
         return delegate.parseElement(ops, registryKey, resourceKey, decoder);
     }
