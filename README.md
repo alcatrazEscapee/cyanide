@@ -75,6 +75,7 @@ Unknown category name: not_a_category, expected one of [none, taiga, extreme_hil
 - Template pools have additional error reporting identifying where in the file errors had occurred.
 - Invalid processor lists in template pools will be caught at datapack load instead of at runtime, causing hard crashes.
 - Invalid registry entries will error at datapack load rather than either defaulting, or returning null at runtime.
+- Feature cycle errors are improved, and will now print the exact features, indices, and source biomes (all by registry name) in the cycle, in order of the cycle.
 - Improvements for log messages for invalid loot tables and recipes:
   - Stack traces are not printed to the log.
   - Offending file names are identified and printed instead.

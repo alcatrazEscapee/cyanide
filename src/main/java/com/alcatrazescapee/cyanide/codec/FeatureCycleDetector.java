@@ -326,7 +326,7 @@ public final class FeatureCycleDetector
                 }
                 if (found > 1)
                 {
-                    error.append("; and ")
+                    error.append(" and ")
                         .append(found - 1)
                         .append(" others)\n");
                 }
