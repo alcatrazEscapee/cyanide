@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_16",
   "mixins": [
     "BiomeMixin",
+    "BiomeSourceMixin",
     "LootTablesMixin",
     "RecipeManagerMixin",
     "RegistryAccessMixin",

@@ -21,7 +21,6 @@ import org.apache.logging.log4j.Logger;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.WritableRegistry;
 import net.minecraft.resources.RegistryReadOps;
 import net.minecraft.resources.RegistryResourceAccess;
 import net.minecraft.resources.ResourceKey;
@@ -37,11 +36,9 @@ import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
-import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.feature.structures.SinglePoolElement;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 
@@ -51,7 +48,6 @@ import com.alcatrazescapee.cyanide.mixin.accessor.*;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import com.mojang.serialization.Lifecycle;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -122,20 +118,6 @@ public final class MixinHooks
             catch (IOException e) { /* Ignore */ }
         }
         return result;
-    }
-
-    public static <E> DataResult<Supplier<E>> registryElementDataResult(ResourceKey<? extends Registry<E>> registryKey, WritableRegistry<E> registry, ResourceLocation id)
-    {
-        final ResourceKey<E> elementKey = ResourceKey.create(registryKey, id);
-        if (registry.containsKey(elementKey))
-        {
-            return DataResult.success(() -> registry.get(elementKey), Lifecycle.stable());
-        }
-        else
-        {
-            // We don't name it here, since the name will be present in at least the file, and possibly a 'at: reference to' which is additionally appended
-            return DataResult.error("Reference to unknown registry element", () -> registry.get(elementKey), Lifecycle.stable());
-        }
     }
 
     public static Codec<Biome> makeBiomeCodec()
@@ -269,7 +251,7 @@ public final class MixinHooks
 
     /**
      * Mirrors the logic used in {@link net.minecraft.resources.RegistryResourceAccess#forResourceManager(ResourceManager)} for {@code parseElement()}.
-     * Used to refer to a registry and element pair by it's datapack defined file location.
+     * Used to refer to a registry and element pair by its datapack defined file location.
      */
     private static ResourceLocation registryFileLocation(ResourceKey<? extends Registry<?>> registry, ResourceLocation resource)
     {
