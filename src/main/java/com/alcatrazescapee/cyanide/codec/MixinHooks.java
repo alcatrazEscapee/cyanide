@@ -56,7 +56,25 @@ public final class MixinHooks
     private static final GenerationStep.Decoration[] DECORATION_STEPS = GenerationStep.Decoration.values();
     private static final Logger LOGGER = LogManager.getLogger();
 
+    private static final ThreadLocal<RegistryAccess> CAPTURED_REGISTRY_ACCESS = ThreadLocal.withInitial(() -> null);
     @Nullable private static Codec<Supplier<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
+
+    public static void captureRegistryAccess(RegistryAccess registryAccess)
+    {
+        CAPTURED_REGISTRY_ACCESS.set(registryAccess);
+    }
+
+    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStepAndPopulateErrors(List<Biome> allBiomes)
+    {
+        final RegistryAccess registryAccess = CAPTURED_REGISTRY_ACCESS.get();
+        if (registryAccess != null)
+        {
+            final Registry<Biome> biomeRegistry = registryAccess.registryOrThrow(Registry.BIOME_REGISTRY);
+            final Registry<PlacedFeature> placedFeatureRegistry = registryAccess.registryOrThrow(Registry.PLACED_FEATURE_REGISTRY);
+            return FeatureCycleDetector.buildFeaturesPerStep(allBiomes, b -> idFor(biomeRegistry, b), f -> idFor(placedFeatureRegistry, f));
+        }
+        return FeatureCycleDetector.buildFeaturesPerStep(allBiomes);
+    }
 
     public static Optional<WorldGenSettings> printWorldGenSettingsError(DataResult<WorldGenSettings> result)
     {
@@ -140,7 +158,7 @@ public final class MixinHooks
             Codec.INT.fieldOf("sky_color").forGetter(BiomeSpecialEffects::getSkyColor),
             Codecs.optionalFieldOf(Codec.INT, "foliage_color").forGetter(BiomeSpecialEffects::getFoliageColorOverride),
             Codecs.optionalFieldOf(Codec.INT, "grass_color").forGetter(BiomeSpecialEffects::getGrassColorOverride),
-            Codecs.optionalFieldOf(Codecs.fromExtensibleEnum("grass color modifier", BiomeSpecialEffects.GrassColorModifier::values, BiomeSpecialEffects.GrassColorModifier::byName), "grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
+            Codecs.optionalFieldOf(Codecs.fromEnum("grass color modifier", BiomeSpecialEffects.GrassColorModifier::values, BiomeSpecialEffects.GrassColorModifier::byName), "grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
             Codecs.optionalFieldOf(AmbientParticleSettings.CODEC, "particle").forGetter(BiomeSpecialEffects::getAmbientParticleSettings),
             Codecs.optionalFieldOf(SoundEvent.CODEC, "ambient_sound").forGetter(BiomeSpecialEffects::getAmbientLoopSoundEvent),
             Codecs.optionalFieldOf(AmbientMoodSettings.CODEC, "mood_sound").forGetter(BiomeSpecialEffects::getAmbientMoodSettings),
@@ -271,5 +289,12 @@ public final class MixinHooks
             return;
         }
         logger.error(fallbackMessage, possibleId, possibleError); // Fallback
+    }
+
+    private static <T> String idFor(Registry<T> registry, T element)
+    {
+        return registry.getResourceKey(element)
+            .map(e -> e.location().toString())
+            .orElseGet(() -> "[Unknown " + registry.key().location().toString() + ']');
     }
 }

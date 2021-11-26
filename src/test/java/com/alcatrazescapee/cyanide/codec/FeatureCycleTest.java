@@ -107,12 +107,12 @@ public class FeatureCycleTest
         final List<Biome> list = Arrays.asList(biomes);
         try
         {
-            FeatureCycleDetector.buildFeaturesPerStep(list);
+            FeatureCycleDetector.buildFeaturesPerStep(list, o -> names.getOrDefault(o, "biome?"), o -> names.getOrDefault(o, "feature?"));
             fail("No feature cycle detected by FeatureCycleDetector");
         }
         catch (FeatureCycleDetector.FeatureCycleException e)
         {
-            System.out.println(e.messageWithContext(o -> names.getOrDefault(o, "biome?"), o -> names.getOrDefault(o, "feature?")));
+            System.out.println(e.getMessage());
         }
 
         assertThrows(IllegalStateException.class, () -> biomeSourceBuildFeaturesPerStep(list), "BiomeSource did not detect a feature cycle?");

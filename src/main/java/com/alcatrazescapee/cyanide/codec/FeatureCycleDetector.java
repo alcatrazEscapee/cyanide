@@ -29,14 +29,22 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public final class FeatureCycleDetector
 {
+    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Biome> allBiomes)
+    {
+        return buildFeaturesPerStep(allBiomes, biome -> "???", feature -> "???");
+    }
+
     /**
      * A modified version of {@link BiomeSource#buildFeaturesPerStep(List, boolean)} with several improvements, in order to properly report errors.
      * Added comments, removed vanilla's slow as heck "try this again by removing biomes until it doesn't break" detector and replace with one that is able to track the detected cycle during the DFS.
      *
-     * @throws FeatureCycleException if a feature was detected, which can be contextualized with additional error information with {@link FeatureCycleException#messageWithContext(Function, Function)}
+     * @param biomeName A function to name biomes in error messages
+     * @param featureName A function to name features in error messages
+     *
+     * @throws FeatureCycleException if a feature was detected.
      */
     @SuppressWarnings("ConstantConditions")
-    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Biome> allBiomes)
+    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Biome> allBiomes, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
     {
         // The second method parameter to this method is if it was called recursively / from itself or not. We ignore it entirely
         boolean calledFromTopLevel = true;
@@ -139,7 +147,7 @@ public final class FeatureCycleDetector
 
                 // At this point, we have enough information to throw a custom exception, with the biomes and features involved
                 // if (true) here, as we keep the below code since it's from vanilla, but it is never executed
-                if (true) throw new FeatureCycleException(nodesToTracebacks, featureCycle);
+                if (true) throw new FeatureCycleException(nodesToTracebacks, featureCycle, biomeName, featureName);
 
                 // A cycle has been found from the DFS
                 if (!calledFromTopLevel)
@@ -169,7 +177,7 @@ public final class FeatureCycleDetector
                             // Then, we try and build features again, but without this biome
                             // If this passes, we include the biome again below.
                             // If it fails, the boolean above means that the "false" will just immediately throw an exception
-                            buildFeaturesPerStep(biomeSubset/*, false*/);
+                            buildFeaturesPerStep(biomeSubset, biomeName, featureName);
                         }
                         catch (IllegalStateException e)
                         {
@@ -260,6 +268,66 @@ public final class FeatureCycleDetector
         }
     }
 
+    private static String buildErrorMessage(Map<FeatureData, Map<Biome, IntSet>> tracebacks, List<FeatureData> cycle, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
+    {
+        final StringBuilder error = new StringBuilder("""
+                A feature cycle was found.
+
+                Cycle:
+                """);
+
+        final ListIterator<FeatureData> iterator = cycle.listIterator();
+        final FeatureData start = iterator.next();
+        Map<Biome, IntSet> prevTracebacks = tracebacks.get(start);
+        error.append("At step ")
+            .append(start.step)
+            .append('\n')
+            .append("Feature '")
+            .append(featureName.apply(start.feature))
+            .append("'\n");
+
+        while (iterator.hasNext())
+        {
+            final FeatureData current = iterator.next();
+            final Map<Biome, IntSet> currentTracebacks = tracebacks.get(current);
+            int found = 0;
+            for (Biome biome : Sets.intersection(prevTracebacks.keySet(), currentTracebacks.keySet()))
+            {
+                // Check if the features have a relative ordering from prev -> current, in that biome
+                final int prevTb = prevTracebacks.get(biome).intStream().min().orElseThrow();
+                final int currTb = currentTracebacks.get(biome).intStream().max().orElseThrow();
+                if (prevTb < currTb)
+                {
+                    if (found == 0)
+                    {
+                        error.append("  must be before '")
+                            .append(featureName.apply(current.feature))
+                            .append("' (defined in '")
+                            .append(biomeName.apply(biome))
+                            .append("' at index ")
+                            .append(prevTb)
+                            .append(", ")
+                            .append(currTb);
+                    }
+                    found++;
+                }
+            }
+            if (found > 1)
+            {
+                error.append(" and ")
+                    .append(found - 1)
+                    .append(" others)\n");
+            }
+            else if (found > 0)
+            {
+                error.append(")\n");
+            }
+
+            prevTracebacks = currentTracebacks;
+        }
+        return error.toString();
+    }
+
     /**
      * @param featureIndex An integer ID mapping for the feature, NOT the index of the feature within the step
      * @param step The step index the feature was found in.
@@ -269,75 +337,9 @@ public final class FeatureCycleDetector
 
     static class FeatureCycleException extends RuntimeException
     {
-        private final Map<FeatureData, Map<Biome, IntSet>> tracebacks;
-        private final List<FeatureData> cycle;
-
-        FeatureCycleException(Map<FeatureData, Map<Biome, IntSet>> tracebacks, List<FeatureData> cycle)
+        public FeatureCycleException(Map<FeatureData, Map<Biome, IntSet>> tracebacks, List<FeatureData> cycle, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
         {
-            super("Feature order cycle");
-
-            this.tracebacks = tracebacks;
-            this.cycle = cycle;
-        }
-
-        public String messageWithContext(Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
-        {
-            final StringBuilder error = new StringBuilder("""
-                A feature cycle was found.
-
-                Cycle:
-                """);
-
-            final ListIterator<FeatureData> iterator = cycle.listIterator();
-            final FeatureData start = iterator.next();
-            Map<Biome, IntSet> prevTracebacks = tracebacks.get(start);
-            error.append("At step ")
-                .append(start.step)
-                .append('\n')
-                .append("Feature '")
-                .append(featureName.apply(start.feature))
-                .append("'\n");
-
-            while (iterator.hasNext())
-            {
-                final FeatureData current = iterator.next();
-                final Map<Biome, IntSet> currentTracebacks = tracebacks.get(current);
-                int found = 0;
-                for (Biome biome : Sets.intersection(prevTracebacks.keySet(), currentTracebacks.keySet()))
-                {
-                    // Check if the features have a relative ordering from prev -> current, in that biome
-                    final int prevTb = prevTracebacks.get(biome).intStream().min().orElseThrow();
-                    final int currTb = currentTracebacks.get(biome).intStream().max().orElseThrow();
-                    if (prevTb < currTb)
-                    {
-                        if (found == 0)
-                        {
-                            error.append("  must be before '")
-                                .append(featureName.apply(current.feature))
-                                .append("' (defined in '")
-                                .append(biomeName.apply(biome))
-                                .append("' at index ")
-                                .append(prevTb)
-                                .append(", ")
-                                .append(currTb);
-                        }
-                        found++;
-                    }
-                }
-                if (found > 1)
-                {
-                    error.append(" and ")
-                        .append(found - 1)
-                        .append(" others)\n");
-                }
-                else if (found > 0)
-                {
-                    error.append(")\n");
-                }
-
-                prevTracebacks = currentTracebacks;
-            }
-            return error.toString();
+            super(buildErrorMessage(tracebacks, cycle, biomeName, featureName));
         }
     }
 }
