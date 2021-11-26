@@ -19,11 +19,18 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RegistryAccess.class)
 public abstract class RegistryAccessMixin
 {
     @Shadow @Final static Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> REGISTRIES;
+
+    @Inject(method = "builtin", at = @At("RETURN"))
+    private static void captureCurrentRegistryAccess(CallbackInfoReturnable<RegistryAccess.RegistryHolder> cir)
+    {
+        MixinHooks.captureRegistryAccess(cir.getReturnValue());
+    }
 
     @Inject(method = "load", at = @At("HEAD"), cancellable = true)
     private static void loadCollectingErrors(RegistryAccess registryAccess, RegistryReadOps<?> ops, CallbackInfo ci)

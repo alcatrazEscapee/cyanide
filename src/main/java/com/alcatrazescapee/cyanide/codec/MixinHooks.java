@@ -52,7 +52,25 @@ public final class MixinHooks
     private static final GenerationStep.Decoration[] DECORATION_STEPS = GenerationStep.Decoration.values();
     private static final Logger LOGGER = LogManager.getLogger();
 
+    private static final ThreadLocal<RegistryAccess> CAPTURED_REGISTRY_ACCESS = ThreadLocal.withInitial(() -> null);
     private static Codec<Supplier<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
+
+    public static void captureRegistryAccess(RegistryAccess registryAccess)
+    {
+        CAPTURED_REGISTRY_ACCESS.set(registryAccess);
+    }
+
+    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStepAndPopulateErrors(List<Biome> allBiomes)
+    {
+        final RegistryAccess registryAccess = CAPTURED_REGISTRY_ACCESS.get();
+        if (registryAccess != null)
+        {
+            final Registry<Biome> biomeRegistry = registryAccess.registryOrThrow(Registry.BIOME_REGISTRY);
+            final Registry<PlacedFeature> placedFeatureRegistry = registryAccess.registryOrThrow(Registry.PLACED_FEATURE_REGISTRY);
+            return FeatureCycleDetector.buildFeaturesPerStep(allBiomes, b -> idFor(biomeRegistry, b), f -> idFor(placedFeatureRegistry, f));
+        }
+        return FeatureCycleDetector.buildFeaturesPerStep(allBiomes);
+    }
 
     public static Optional<WorldGenSettings> printWorldGenSettingsError(DataResult<WorldGenSettings> result)
     {
@@ -266,5 +284,12 @@ public final class MixinHooks
             return;
         }
         logger.error(fallbackMessage, possibleId, possibleError); // Fallback
+    }
+
+    private static <T> String idFor(Registry<T> registry, T element)
+    {
+        return registry.getResourceKey(element)
+            .map(e -> e.location().toString())
+            .orElseGet(() -> "[Unknown " + registry.key().location().toString() + ']');
     }
 }
