@@ -41,7 +41,7 @@ version = envVersion == null ? 'indev' : envVersion
 
 group = 'com.github.alcatrazEscapee'
 archivesBaseName = "${mod_id}-forge-${minecraft_version}"
-java.toolchain.languageVersion = JavaLanguageVersion.of(16)
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 minecraft {
     mappings channel: mappingsChannel, version: mappingsVersion
@@ -99,8 +99,8 @@ dependencies {
         annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
     }
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 }
 
 test {
