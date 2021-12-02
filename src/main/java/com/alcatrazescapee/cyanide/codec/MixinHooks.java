@@ -206,7 +206,7 @@ public final class MixinHooks
             biomeGenerationSettingsCodec.forGetter(Biome::getGenerationSettings),
             MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings),
             ResourceLocation.CODEC.optionalFieldOf("forge:registry_name").forGetter(b -> Optional.ofNullable(b.getRegistryName()))
-        ).apply(instance, (climate, category, depth, scale, effects, gen, spawns, name) -> ForgeHooks.enhanceBiome(name.orElse(null), climate, category, depth, scale, effects, gen, spawns, instance, BiomeAccessor::cyanide$new)));
+        ).apply(instance, (climate, category, effects, gen, spawns, name) -> ForgeHooks.enhanceBiome(name.orElse(null), climate, category, effects, gen, spawns, instance, BiomeAccessor::cyanide$new)));
     }
 
     public static <E extends SinglePoolElement> RecordCodecBuilder<E, Supplier<StructureProcessorList>> makeSinglePoolElementProcessorsCodec()
