@@ -122,16 +122,18 @@ public final class MixinHooks
 
     public static <E> DataResult<E> appendRegistryEntrySourceError(DataResult<E> result, RegistryReadOps<?> ops, ResourceKey<? extends Registry<?>> registryKey, ResourceLocation resourceLocation)
     {
-        if (((RegistryReadOpsAccessor) ops).cyanide$getResources() instanceof ResourceAccessWrapper wrapper)
-        {
-            try
+        return result.mapError(error -> {
+            if (((RegistryReadOpsAccessor) ops).cyanide$getResources() instanceof ResourceAccessWrapper wrapper)
             {
-                final Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation));
-                return result.mapError(e -> appendErrorLocation(e, "data pack " + resource.getSourceName()));
+                try
+                {
+                    final Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation));
+                    return appendErrorLocation(error, "data pack " + resource.getSourceName());
+                }
+                catch (IOException e) { /* Ignore */ }
             }
-            catch (IOException e) { /* Ignore */ }
-        }
-        return result;
+            return error;
+        });
     }
 
     public static Codec<Biome> makeBiomeCodec()
