@@ -16,6 +16,7 @@ buildscript {
 }
 
 plugins {
+    id 'com.jfrog.artifactory' version '4.25.4'
     id 'org.cadixdev.licenser' version '0.6.1'
     id 'maven-publish'
     id 'idea'
@@ -36,10 +37,10 @@ def mappingsVersion = project.hasProperty('mappings_version') ? mappings_version
 println 'Using mappings: ' + mappingsChannel + ' / ' + mappingsVersion
 
 // Use version from environment variable, if set
-def envVersion = System.getenv('VERSION')
-version = envVersion == null ? 'indev' : envVersion
+def env = System.getenv()
+version = env.VERSION == null ? 'indev' : env.VERSION
 
-group = 'com.github.alcatrazEscapee'
+group = 'com.alcatrazescapee'
 archivesBaseName = "${mod_id}-forge-${minecraft_version}"
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
@@ -99,8 +100,8 @@ dependencies {
         annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
     }
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 }
 
 test {
@@ -130,13 +131,21 @@ license {
     include '**/*.java'
 }
 
+task makeTestDataPack(type: Exec) {
+    workingDir "${projectDir}/datapack"
+    commandLine 'jar', '-cMf', '../example_datapack.zip', 'pack.mcmeta', 'data'
+    doLast {
+        println "Executed!"
+    }
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
 
-            groupId = 'com.github.alcatrazEscapee'
-            artifactId = "cyanide"
+            groupId = 'com.alcatrazescapee'
+            artifactId = "${mod_id}-forge-${minecraft_version}"
             version = "${project.version}"
         }
     }
@@ -145,10 +154,18 @@ publishing {
     }
 }
 
-task makeTestDataPack(type: Exec) {
-    workingDir "${projectDir}/datapack"
-    commandLine 'jar', '-cMf', '../example_datapack.zip', 'pack.mcmeta', 'data'
-    doLast {
-        println "Executed!"
+artifactory {
+    contextUrl = 'https://alcatrazescapee.jfrog.io/artifactory'
+    publish {
+        repository {
+            repoKey = 'mods'
+            username = env.ARTIFACTORY_USERNAME
+            password = env.ARTIFACTORY_PASSWORD
+        }
+        defaults {
+            publications('mavenJava')
+            publishArtifacts = true
+            publishIvy = false
+        }
     }
 }

@@ -61,3 +61,10 @@ jobs:
           asset_path: ./build/libs/cyanide-forge-1.18-${{ steps.get_version.outputs.result }}.jar
           asset_name: cyanide-forge-1.18-${{ steps.get_version.outputs.result }}.jar
           asset_content_type: application/java-archive
+      - name: Publish to Artifactory
+        id: publish_artifactory
+        run: ./gradlew artifactoryPublish
+        env:
+          VERSION: ${{ steps.get_version.outputs.result }}
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secretes.ARTIFACTORY_PASSWORD }}

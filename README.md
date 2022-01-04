@@ -80,3 +80,17 @@ Unknown category name: not_a_category, expected one of [none, taiga, extreme_hil
   - Stack traces are not printed to the log.
   - Offending file names are identified and printed instead.
 - The "Loaded X Recipe(s)" log message is now accurate.
+
+### Using
+
+To include Cyanide in your development environment (Forge):
+
+```groovy
+repositories {
+    maven { url = 'https://alcatrazescapee.jfrog.io/artifactory/mods' }
+}
+
+dependencies {
+    runtimeOnly fg.deobf("com.alcatrazescapee:cyanide-forge-1.18:VERSION") { transitive = false }
+}
+```
