@@ -67,4 +67,4 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.result }}
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secretes.ARTIFACTORY_PASSWORD }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
