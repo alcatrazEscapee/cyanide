@@ -46,7 +46,7 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
                 return ResourceLocation.CODEC.encode(optionalKey.get().location(), ops, prefix);
             }
         }
-        return input.unwrap().map((key) -> ResourceLocation.CODEC.encode(key.location(), ops, prefix), (p_206710_) -> this.elementCodec.encode(p_206710_, ops, prefix));
+        return input.unwrap().map((key) -> ResourceLocation.CODEC.encode(key.location(), ops, prefix), (e) -> this.elementCodec.encode(e, ops, prefix));
     }
 
     @Override
