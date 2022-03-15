@@ -17,6 +17,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.mutable.MutableInt;
 import net.minecraft.Util;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -72,16 +74,16 @@ public final class FeatureCycleDetector
             // So, we represent that as a graph F1 -> F2 -> ... -> Fn
 
             final List<FeatureData> flatDataList = Lists.newArrayList();
-            final List<List<Supplier<PlacedFeature>>> features = biome.getGenerationSettings().features();
+            final List<HolderSet<PlacedFeature>> features = biome.getGenerationSettings().features();
 
             maxSteps = Math.max(maxSteps, features.size());
 
             for (int stepIndex = 0; stepIndex < features.size(); ++stepIndex)
             {
                 int biomeIndex = 0;
-                for (Supplier<PlacedFeature> supplier : features.get(stepIndex))
+                for (Holder<PlacedFeature> supplier : features.get(stepIndex))
                 {
-                    final PlacedFeature feature = supplier.get();
+                    final PlacedFeature feature = supplier.value();
                     final FeatureData data = new FeatureData(featureToIntIdMap.computeIfAbsent(feature, key -> nextId.getAndIncrement()), stepIndex, feature);
                     flatDataList.add(data);
 

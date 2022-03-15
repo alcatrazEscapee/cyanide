@@ -5,9 +5,9 @@
 
 package com.alcatrazescapee.cyanide.mixin;
 
-import java.util.function.Supplier;
 
-import net.minecraft.world.level.levelgen.feature.structures.SinglePoolElement;
+import net.minecraft.core.Holder;
+import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class SinglePoolElementMixin
 {
     @Inject(method = "processorsCodec", at = @At("HEAD"), cancellable = true)
-    private static <E extends SinglePoolElement> void improvedProcessorsCodec(CallbackInfoReturnable<RecordCodecBuilder<E, Supplier<StructureProcessorList>>> cir)
+    private static <E extends SinglePoolElement> void improvedProcessorsCodec(CallbackInfoReturnable<RecordCodecBuilder<E, Holder<StructureProcessorList>>> cir)
     {
         cir.setReturnValue(MixinHooks.makeSinglePoolElementProcessorsCodec());
     }

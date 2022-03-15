@@ -25,4 +25,7 @@ public interface BiomeAccessor
 
     @Accessor("climateSettings")
     Biome.ClimateSettings cyanide$getClimateSettings();
+
+    @Accessor("biomeCategory")
+    Biome.BiomeCategory cyanide$getBiomeCategory();
 }

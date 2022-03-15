@@ -5,8 +5,7 @@
 
 package com.alcatrazescapee.cyanide.mixin.accessor;
 
-import java.util.function.Supplier;
-
+import net.minecraft.core.Holder;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
@@ -17,5 +16,5 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface PlacedFeatureAccessor
 {
     @Accessor("feature")
-    Supplier<ConfiguredFeature<?, ?>> cyanide$getFeature();
+    Holder<ConfiguredFeature<?, ?>> cyanide$getFeature();
 }

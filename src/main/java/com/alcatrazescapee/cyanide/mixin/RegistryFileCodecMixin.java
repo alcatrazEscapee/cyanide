@@ -22,9 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(RegistryFileCodec.class)
 public abstract class RegistryFileCodecMixin
 {
-    @Inject(method = "homogeneousList", at = @At("HEAD"), cancellable = true)
+    /*@Inject(method = "homogeneousList", at = @At("HEAD"), cancellable = true)
     private static <E> void improvedListCodec(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec, CallbackInfoReturnable<Codec<List<Supplier<E>>>> cir)
     {
         cir.setReturnValue(Codecs.registryEntryListCodec(registryKey, elementCodec));
-    }
+    }*/
 }

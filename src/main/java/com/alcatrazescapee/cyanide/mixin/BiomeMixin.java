@@ -5,8 +5,7 @@
 
 package com.alcatrazescapee.cyanide.mixin;
 
-import java.util.function.Supplier;
-
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.world.level.biome.Biome;
 
@@ -22,7 +21,7 @@ import org.spongepowered.asm.mixin.Shadow;
 public abstract class BiomeMixin
 {
     @Shadow @Final @Mutable public static Codec<Biome> DIRECT_CODEC;
-    @Shadow @Final @Mutable public static Codec<Supplier<Biome>> CODEC;
+    @Shadow @Final @Mutable public static Codec<Holder<Biome>> CODEC;
 
     static
     {

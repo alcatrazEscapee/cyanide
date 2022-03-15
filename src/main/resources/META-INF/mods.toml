@@ -1,6 +1,6 @@
 # Loader Metadata
 modLoader = "javafml"
-loaderVersion = "[38,)"
+loaderVersion = "[40,)"
 issueTrackerURL = "https://github.com/alcatrazEscapee/cyanide/issues" # optional
 license = "MIT"
 
@@ -16,11 +16,11 @@ license = "MIT"
 [[dependencies.cyanide]]
     modId = "forge"
     mandatory = true
-    versionRange = "[38.0.0,)"
+    versionRange = "[40.0.0,)"
     ordering = "AFTER"
 
 [[dependencies.cyanide]]
     modId = "minecraft"
     mandatory = true
-    versionRange = "[1.18,)"
+    versionRange = "[1.18.2,)"
     ordering = "NONE"
