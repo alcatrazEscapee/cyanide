@@ -8,6 +8,7 @@ package com.alcatrazescapee.cyanide.codec;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.WritableRegistry;
@@ -20,40 +21,41 @@ import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.Lifecycle;
 
 /**
  * Based on {@link RegistryFileCodec}
  */
-public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec) implements Codec<Supplier<E>>
+public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec) implements Codec<Holder<E>>
 {
     @Override
-    public <T> DataResult<T> encode(Supplier<E> input, DynamicOps<T> ops, T prefix)
+    public <T> DataResult<T> encode(Holder<E> input, DynamicOps<T> ops, T prefix)
     {
-        if (ops instanceof RegistryWriteOps<T> registryOps)
+        if (ops instanceof RegistryOps<T> registryOps)
         {
             final RegistryAccess registryAccess = ((RegistryWriteOpsAccessor) registryOps).cyanide$getRegistryAccess();
-            final Optional<WritableRegistry<E>> optionalRegistry = registryAccess.ownedRegistry(registryKey);
+            final Optional<Registry<E>> optionalRegistry = registryAccess.ownedRegistry(registryKey);
             if (optionalRegistry.isEmpty())
             {
                 return DataResult.error("Unknown registry " + registryKey.location());
             }
 
-            final Optional<ResourceKey<E>> optionalKey = optionalRegistry.get().getResourceKey(input.get());
+            final Optional<ResourceKey<E>> optionalKey = optionalRegistry.get().getResourceKey(input.value());
             if (optionalKey.isPresent())
             {
                 return ResourceLocation.CODEC.encode(optionalKey.get().location(), ops, prefix);
             }
         }
-        return elementCodec.encode(input.get(), ops, prefix);
+        return input.unwrap().map((key) -> ResourceLocation.CODEC.encode(key.location(), ops, prefix), (p_206710_) -> this.elementCodec.encode(p_206710_, ops, prefix));
     }
 
     @Override
-    public <T> DataResult<Pair<Supplier<E>, T>> decode(DynamicOps<T> ops, T input)
+    public <T> DataResult<Pair<Holder<E>, T>> decode(DynamicOps<T> ops, T input)
     {
-        if (ops instanceof RegistryReadOps<T> registryOps)
+        if (ops instanceof RegistryOps<T> registryOps)
         {
             final RegistryAccess registryAccess = ((RegistryReadOpsAccessor) registryOps).cyanide$getRegistryAccess();
-            final Optional<WritableRegistry<E>> optionalRegistry = registryAccess.ownedRegistry(registryKey);
+            final Optional<Registry<E>> optionalRegistry = registryAccess.ownedRegistry(registryKey);
             if (optionalRegistry.isEmpty())
             {
                 return DataResult.error("Unknown registry " + registryKey);
@@ -66,16 +68,25 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
                 final ResourceLocation id = result.getFirst();
                 final ResourceKey<E> key = ResourceKey.create(registryKey, id);
 
-                DataResult<Supplier<E>> decoded = ((RegistryReadOpsAccessor) registryOps).cyanide$readAndRegisterElement(registryKey, optionalRegistry.get(), elementCodec, key);
-                if (decoded.error().isPresent())
+                Optional<RegistryLoader.Bound> loader = registryOps.registryLoader();
+                if (loader.isPresent())
                 {
-                    decoded = MixinHooks.appendRegistryReferenceError(decoded, id, registryKey);
+                    DataResult<Holder<E>> decoded = loader.get().overrideElementFromResources(registryKey, elementCodec, key, registryOps.getAsJson());
+                    if (decoded.error().isPresent())
+                    {
+                        decoded = MixinHooks.appendRegistryReferenceError(decoded, id, registryKey);
+                    }
+                    return decoded.map(value -> Pair.of(value, result.getSecond()));
                 }
-                return decoded.map(e -> Pair.of(e, result.getSecond()));
+                else
+                {
+                    Holder<E> holder = optionalRegistry.get().getOrCreateHolder(key);
+                    return DataResult.success(Pair.of(holder, optionalResult.result().get().getSecond()), Lifecycle.stable());
+                }
             }
         }
-        DataResult<Pair<Supplier<E>, T>> result = elementCodec.decode(ops, input)
-            .map(r -> r.mapFirst(e -> () -> e));
+        DataResult<Pair<Holder<E>, T>> result = elementCodec.decode(ops, input)
+            .map(r -> r.mapFirst(Holder::direct));
         if (result.error().isPresent())
         {
             result = MixinHooks.appendRegistryError(result, registryKey);

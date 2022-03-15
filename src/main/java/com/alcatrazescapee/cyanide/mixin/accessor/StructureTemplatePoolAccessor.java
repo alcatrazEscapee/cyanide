@@ -7,8 +7,8 @@ package com.alcatrazescapee.cyanide.mixin.accessor;
 
 import java.util.List;
 
-import net.minecraft.world.level.levelgen.feature.structures.StructurePoolElement;
-import net.minecraft.world.level.levelgen.feature.structures.StructureTemplatePool;
+import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 
 import com.mojang.datafixers.util.Pair;
 import org.spongepowered.asm.mixin.Mixin;

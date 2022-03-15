@@ -9,13 +9,14 @@ import java.util.*;
 import java.util.function.*;
 import java.util.stream.Collectors;
 
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.StringRepresentable;
 
 import com.mojang.datafixers.util.Either;
-import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.*;
 
 public final class Codecs
@@ -96,7 +97,7 @@ public final class Codecs
                 name -> Optional.ofNullable(enumName.apply(name))
                     .map(DataResult::success)
                     .orElseGet(() -> DataResult.error("Unknown " + id + " name: " + name + ", expected one of [" + Arrays.stream(values).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]")),
-                value -> Optional.ofNullable(value.getSerializedName())
+                value -> Optional.of(value.getSerializedName())
                     .map(DataResult::success)
                     .orElseGet(() -> DataResult.error("Unknown name for " + id + ": " + value))),
             ExtraCodecs.idResolverCodec(Enum::ordinal, index -> index >= 0 && index < values.length ? values[index] : null, -1)
@@ -106,22 +107,21 @@ public final class Codecs
     /**
      * Replacement for {@link net.minecraft.resources.RegistryFileCodec#create(ResourceKey, Codec)}
      */
-    public static <E> Codec<Supplier<E>> registryEntryCodec(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec)
+    public static <E> Codec<Holder<E>> registryEntryCodec(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec)
     {
         return new RegistryEntryCodec<>(registryKey, elementCodec);
     }
 
-    /**
-     * Replacement for {@link net.minecraft.resources.RegistryFileCodec#homogeneousList(ResourceKey, Codec)}
+    /*
      * Note this is <strong>not</strong> a homogeneous list, and rather accepts mixed lists, prioritizing the registry name.
-     */
-    public static <E> Codec<List<Supplier<E>>> registryEntryListCodec(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec)
+
+    public static <E> Codec<HolderSet<E>> registryEntryListCodec(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec)
     {
         return either(
             ShapedCodec.likeString(new RegistryEntryCodec<>(registryKey, elementCodec)),
             ShapedCodec.likeMap(elementCodec)
         ).xmap(e -> e.map(e1 -> e1, e2 -> () -> e2), Either::left).listOf();
-    }
+    }*/
 
     public static <T> MapCodec<Supplier<T>> nonNullSupplier(MapCodec<Supplier<T>> codec, String key)
     {
@@ -130,7 +130,7 @@ public final class Codecs
     }
 
     /**
-     * {@link ExtraCodecs#nonNullSupplierCheck()} but with a specific name, and doesn't print the supplier (because really, why would you).
+     * Doesn't print the supplier (because really, why would you).
      */
     public static <T> Function<Supplier<T>, DataResult<Supplier<T>>> nonNullSupplierCheck(String key)
     {
@@ -150,25 +150,25 @@ public final class Codecs
         };
     }
 
-    public static <T> Codec<List<Supplier<T>>> nonNullSupplierList(Codec<List<Supplier<T>>> codec, String key)
+    public static <T> Codec<HolderSet<T>> nonNullHolderSet(Codec<HolderSet<T>> codec, String key)
     {
-        final Function<List<Supplier<T>>, DataResult<List<Supplier<T>>>> map = nonNullSupplierListCheck(key);
+        final Function<HolderSet<T>, DataResult<HolderSet<T>>> map = nonNullHolderListCheck(key);
         return codec.flatXmap(map, map);
     }
 
     /**
-     * {@link ExtraCodecs#nonNullSupplierListCheck()} but with a specific name and better errors.
+     * Specific name and better errors.
      */
-    public static <T> Function<List<Supplier<T>>, DataResult<List<Supplier<T>>>> nonNullSupplierListCheck(String key)
+    public static <T> Function<HolderSet<T>, DataResult<HolderSet<T>>> nonNullHolderListCheck(String key)
     {
         return list -> {
             final List<String> errors = new ArrayList<>();
             for (int i = 0; i < list.size(); ++i)
             {
-                final Supplier<T> supplier = list.get(i);
+                final Holder<T> holder = list.get(i);
                 try
                 {
-                    if (supplier.get() == null)
+                    if (!holder.isBound())
                     {
                         errors.add("Missing " + key + " at index " + i);
                     }

@@ -7,12 +7,14 @@ package com.alcatrazescapee.cyanide.mixin;
 
 import java.util.Map;
 
+import com.google.gson.JsonElement;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.RegistryReadOps;
+import net.minecraft.resources.RegistryLoader;
 import net.minecraft.resources.ResourceKey;
 
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
+import com.mojang.serialization.DynamicOps;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,20 +24,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RegistryAccess.class)
-public abstract class RegistryAccessMixin
+public interface RegistryAccessMixin
 {
-    @Shadow @Final static Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> REGISTRIES;
-
-    @Inject(method = "builtin", at = @At("RETURN"))
-    private static void captureCurrentRegistryAccess(CallbackInfoReturnable<RegistryAccess.RegistryHolder> cir)
-    {
-        MixinHooks.captureRegistryAccess(cir.getReturnValue());
-    }
-
-    @Inject(method = "load", at = @At("HEAD"), cancellable = true)
-    private static void loadCollectingErrors(RegistryAccess registryAccess, RegistryReadOps<?> ops, CallbackInfo ci)
-    {
-        MixinHooks.readRegistries(registryAccess, ops, REGISTRIES);
-        ci.cancel();
-    }
+//    @Inject(method = "builtinCopy", at = @At("RETURN"))
+//    private static void captureCurrentRegistryAccess(CallbackInfoReturnable<RegistryAccess.Writable> cir)
+//    {
+//        MixinHooks.captureRegistryAccess(cir.getReturnValue());
+//    }
+//
+//    @Inject(method = "load", at = @At("HEAD"), cancellable = true)
+//    private static void loadCollectingErrors(RegistryAccess.Writable registryAccess, DynamicOps<JsonElement> ops, RegistryLoader loader, CallbackInfo ci)
+//    {
+//        MixinHooks.readRegistries(registryAccess, ops, RegistryAccess.REGISTRIES, loader);
+//        ci.cancel();
+//    }
 }

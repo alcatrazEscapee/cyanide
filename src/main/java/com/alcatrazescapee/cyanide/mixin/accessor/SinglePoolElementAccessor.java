@@ -5,9 +5,8 @@
 
 package com.alcatrazescapee.cyanide.mixin.accessor;
 
-import java.util.function.Supplier;
-
-import net.minecraft.world.level.levelgen.feature.structures.SinglePoolElement;
+import net.minecraft.core.Holder;
+import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,5 +16,5 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface SinglePoolElementAccessor
 {
     @Accessor("processors")
-    Supplier<StructureProcessorList> cyanide$getProcessors();
+    Holder<StructureProcessorList> cyanide$getProcessors();
 }

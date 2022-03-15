@@ -19,12 +19,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(BiomeSource.class)
 public abstract class BiomeSourceMixin
 {
-    /**
-     * Replace this with a method that has a much better error tracing and is probably more efficient
-     */
-    @Inject(method = "buildFeaturesPerStep", at = @At("HEAD"), cancellable = true)
-    private void buildFeaturesPerStepWithAdvancedCycleDetection(List<Biome> biomes, boolean topLevel, CallbackInfoReturnable<List<BiomeSource.StepFeatureData>> cir)
-    {
-        cir.setReturnValue(MixinHooks.buildFeaturesPerStepAndPopulateErrors(biomes));
-    }
+//    /**
+//     * Replace this with a method that has a much better error tracing and is probably more efficient
+//     */
+//    @Inject(method = "buildFeaturesPerStep", at = @At("HEAD"), cancellable = true)
+//    private void buildFeaturesPerStepWithAdvancedCycleDetection(List<Biome> biomes, boolean topLevel, CallbackInfoReturnable<List<BiomeSource.StepFeatureData>> cir)
+//    {
+//        cir.setReturnValue(MixinHooks.buildFeaturesPerStepAndPopulateErrors(biomes));
+//    }
 }

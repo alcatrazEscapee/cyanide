@@ -13,13 +13,14 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import javax.annotation.Nullable;
+
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import net.minecraft.core.MappedRegistry;
-import net.minecraft.core.Registry;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.RegistryReadOps;
+import net.minecraft.core.*;
+import net.minecraft.resources.RegistryLoader;
 import net.minecraft.resources.RegistryResourceAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -34,9 +35,9 @@ import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
-import net.minecraft.world.level.levelgen.feature.structures.SinglePoolElement;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
+import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 
@@ -44,6 +45,7 @@ import com.alcatrazescapee.cyanide.mixin.accessor.*;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -53,7 +55,7 @@ public final class MixinHooks
     private static final Logger LOGGER = LogManager.getLogger();
 
     private static final ThreadLocal<RegistryAccess> CAPTURED_REGISTRY_ACCESS = ThreadLocal.withInitial(() -> null);
-    private static Codec<Supplier<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
+    private static Codec<Holder<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
 
     public static void captureRegistryAccess(RegistryAccess registryAccess)
     {
@@ -82,12 +84,12 @@ public final class MixinHooks
             ));
     }
 
-    public static void readRegistries(RegistryAccess registryAccess, RegistryReadOps<?> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData)
+    public static void readRegistries(RegistryAccess.Writable registryAccess, DynamicOps<JsonElement> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData, RegistryLoader loader)
     {
         DataResult<Unit> root = DataResult.success(Unit.INSTANCE);
         for (RegistryAccess.RegistryData<?> data : registryData.values())
         {
-            root = readRegistry(root, registryAccess, ops, data);
+            root = readRegistry(root, registryAccess, ops, data, loader);
         }
         if (root.error().isPresent())
         {
@@ -95,11 +97,11 @@ public final class MixinHooks
         }
     }
 
-    public static <E> DataResult<Unit> readRegistry(DataResult<Unit> result, RegistryAccess registryAccess, RegistryReadOps<?> ops, RegistryAccess.RegistryData<E> data)
+    public static <E> DataResult<Unit> readRegistry(DataResult<Unit> result, RegistryAccess.Writable registryAccess, DynamicOps<JsonElement> ops, RegistryAccess.RegistryData<E> data, RegistryLoader loader)
     {
         final ResourceKey<? extends Registry<E>> key = data.key();
-        final MappedRegistry<E> registry = (MappedRegistry<E>) registryAccess.ownedRegistryOrThrow(key);
-        return result.flatMap(u -> ops.decodeElements(registry, key, data.codec())
+        final WritableRegistry<E> writeable = registryAccess.ownedWritableRegistryOrThrow(key);
+        return result.flatMap(u -> loader.overrideRegistryFromResources(writeable, key, data.codec(), ops)
             .map(e -> Unit.INSTANCE)
             .mapError(e -> "\n\nError(s) loading registry " + key.location() + ":\n" + e.replaceAll("; ", "\n")));
     }
@@ -114,27 +116,28 @@ public final class MixinHooks
         return result.mapError(e -> appendErrorLocation(e, "reference to \"" + id + "\" from " + registry.location()));
     }
 
-    public static <E> DataResult<E> appendRegistryFileError(DataResult<E> result, RegistryReadOps<?> ops, ResourceKey<? extends Registry<?>> registry, ResourceLocation id)
-    {
-        result = result.mapError(e -> appendErrorLocation(e, "file \"" + registryFile(registry, id) + '"'));
-        return appendRegistryEntrySourceError(result, ops, registry, id);
-    }
+//    public static <E> DataResult<E> appendRegistryFileError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registry, ResourceLocation id)
+//    {
+//        result = result.mapError(e -> appendErrorLocation(e, "file \"" + registryFile(registry, id) + '"'));
+//        return appendRegistryEntrySourceError(result, ops, registry, id);
+//    }
 
-    public static <E> DataResult<E> appendRegistryEntrySourceError(DataResult<E> result, RegistryReadOps<?> ops, ResourceKey<? extends Registry<?>> registryKey, ResourceLocation resourceLocation)
-    {
-        return result.mapError(error -> {
-            if (((RegistryReadOpsAccessor) ops).cyanide$getResources() instanceof ResourceAccessWrapper wrapper)
-            {
-                try
-                {
-                    final Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation));
-                    return appendErrorLocation(error, "data pack " + resource.getSourceName());
-                }
-                catch (IOException e) { /* Ignore */ }
-            }
-            return error;
-        });
-    }
+
+//    public static <E> DataResult<E> appendRegistryEntrySourceError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registryKey, ResourceLocation resourceLocation)
+//    {
+//        return result.mapError(error -> {
+//            if (((RegistryReadOpsAccessor) ops).cyanide$getResources() instanceof ResourceAccessWrapper wrapper)
+//            {
+//                try
+//                {
+//                    final Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation));
+//                    return appendErrorLocation(error, "data pack " + resource.getSourceName());
+//                }
+//                catch (IOException e) { /* Ignore */ }
+//            }
+//            return error;
+//        });
+//    }
 
     public static Codec<Biome> makeBiomeCodec()
     {
@@ -169,9 +172,9 @@ public final class MixinHooks
         // Don't use the codec directly, instead use an improved registry entry codec implementation
         final Codec<PlacedFeature> placedFeatureCodec = RecordCodecBuilder.create(instance -> instance.group(
             Codecs.reporting(ConfiguredFeature.CODEC.fieldOf("feature"), "feature").forGetter(c -> MixinHooks.<PlacedFeatureAccessor>cast(c).cyanide$getFeature()),
-            Codecs.reporting(Codecs.list(PlacementModifier.CODEC).fieldOf("placement"), "placement").forGetter(PlacedFeature::getPlacement)
+            Codecs.reporting(Codecs.list(PlacementModifier.CODEC).fieldOf("placement"), "placement").forGetter(PlacedFeature::placement)
         ).apply(instance, PlacedFeature::new));
-        final Codec<List<Supplier<PlacedFeature>>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registry.PLACED_FEATURE_REGISTRY, placedFeatureCodec);
+        //final Codec<HolderSet<PlacedFeature>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registry.PLACED_FEATURE_REGISTRY, placedFeatureCodec);
 
         // Remove promotePartial calls, as logging at this level is pointless since we don't have a file or a registry name
         // Replace ExtraCodecs calls with Codecs, that include names for what is null or invalid
@@ -180,11 +183,11 @@ public final class MixinHooks
         final MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Codecs.reporting(Codec.simpleMap(
                 GenerationStep.Carving.CODEC,
-                Codecs.nonNullSupplierList(ConfiguredWorldCarver.LIST_CODEC, "carver"),
+                Codecs.nonNullHolderSet(ConfiguredWorldCarver.LIST_CODEC, "carver"),
                 StringRepresentable.keys(GenerationStep.Carving.values())
             ).fieldOf("carvers"), "carvers").forGetter(c -> ((BiomeGenerationSettingsAccessor) c).cyanide$getCarvers()),
             Codecs.list(
-                Codecs.nonNullSupplierList(placedFeatureListCodec, "feature"),
+                Codecs.nonNullHolderSet(PlacedFeature.LIST_CODEC, "feature"),
                 (e, i) -> {
                     if (i >= 0 && i < DECORATION_STEPS.length)
                     {
@@ -199,14 +202,14 @@ public final class MixinHooks
         // Use improved enum codec for biome category, and all the above codecs
         return RecordCodecBuilder.create(instance -> instance.group(
             climateSettingsCodec.forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getClimateSettings()),
-            Codecs.fromEnum("category", Biome.BiomeCategory::values, Biome.BiomeCategory::byName).fieldOf("category").forGetter(Biome::getBiomeCategory),
+            Biome.BiomeCategory.CODEC.fieldOf("category").forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getBiomeCategory()),
             Codecs.reporting(specialEffectsCodec.fieldOf("effects"), "effects").forGetter(Biome::getSpecialEffects),
             biomeGenerationSettingsCodec.forGetter(Biome::getGenerationSettings),
             MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings)
         ).apply(instance, BiomeAccessor::cyanide$new));
     }
 
-    public static <E extends SinglePoolElement> RecordCodecBuilder<E, Supplier<StructureProcessorList>> makeSinglePoolElementProcessorsCodec()
+    public static <E extends SinglePoolElement> RecordCodecBuilder<E, Holder<StructureProcessorList>> makeSinglePoolElementProcessorsCodec()
     {
         // Use improved structure processor list codec and add a reporting field to 'processors'
         return Codecs.reporting(structureProcessorListCodec().fieldOf("processors"), "processors").forGetter(e -> ((SinglePoolElementAccessor) e).cyanide$getProcessors());
@@ -241,7 +244,7 @@ public final class MixinHooks
     /**
      * @see StructureProcessorType
      */
-    private static Codec<Supplier<StructureProcessorList>> structureProcessorListCodec()
+    private static Codec<Holder<StructureProcessorList>> structureProcessorListCodec()
     {
         if (STRUCTURE_PROCESSOR_LIST_CODEC == null)
         {
