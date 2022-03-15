@@ -38,7 +38,7 @@ println 'Using mappings: ' + mappingsChannel + ' / ' + mappingsVersion
 
 // Use version from environment variable, if set
 def env = System.getenv()
-version = env.VERSION == null ? 'indev' : env.VERSION
+version = env.VERSION == null ? "1.0.0" : env.VERSION
 
 group = 'com.alcatrazescapee'
 archivesBaseName = "${mod_id}-forge-${minecraft_version}"

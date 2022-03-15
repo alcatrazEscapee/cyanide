@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
+import net.minecraft.resources.HolderSetCodec;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.StringRepresentable;
@@ -114,16 +115,28 @@ public final class Codecs
         return new RegistryEntryCodec<>(registryKey, elementCodec);
     }
 
-    /*
+    /**
      * Note this is <strong>not</strong> a homogeneous list, and rather accepts mixed lists, prioritizing the registry name.
-
+    */
     public static <E> Codec<HolderSet<E>> registryEntryListCodec(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec)
     {
-        return either(
+        return HolderSetCodec.create(registryKey, new RegistryEntryCodec<>(registryKey, ShapedCodec.likeString(elementCodec)), true);
+        /*return either(
             ShapedCodec.likeString(new RegistryEntryCodec<>(registryKey, elementCodec)),
             ShapedCodec.likeMap(elementCodec)
-        ).xmap(e -> e.map(e1 -> e1, e2 -> () -> e2), Either::left).listOf();
-    }*/
+        ).xmap(e -> e.map(e1 -> e1, e2 -> Hold), Either::left);*/
+    }
+
+//    private static <E> Codec<List<Holder<E>>> homogenousList(Codec<Holder<E>> codec, ResourceKey<? extends Registry<E>> key, Codec<E> elementCodec)
+//    {
+//
+//        Function<List<Holder<E>>, DataResult<List<Holder<E>>>> function = ExtraCodecs.ensureHomogenous(Holder::kind);
+//        Codec<List<Holder<E>>> listCodec = codec.listOf().flatXmap(function, function);
+//        return either(
+//            ShapedCodec.likeString(new RegistryEntryCodec<>(key, elementCodec).listOf()),
+//            ShapedCodec.likeMap(elementCodec)
+//        ).xmap((e1) -> e1.map((e2) -> e2, List::of), (list) -> list.size() == 1 ? Either.right(list.get(0)) : Either.left(list));
+//    }
 
     public static <T> MapCodec<Supplier<T>> nonNullSupplier(MapCodec<Supplier<T>> codec, String key)
     {

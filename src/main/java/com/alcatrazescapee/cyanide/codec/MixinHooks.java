@@ -176,7 +176,7 @@ public final class MixinHooks
             Codecs.reporting(ConfiguredFeature.CODEC.fieldOf("feature"), "feature").forGetter(c -> MixinHooks.<PlacedFeatureAccessor>cast(c).cyanide$getFeature()),
             Codecs.reporting(Codecs.list(PlacementModifier.CODEC).fieldOf("placement"), "placement").forGetter(PlacedFeature::placement)
         ).apply(instance, PlacedFeature::new));
-        //final Codec<HolderSet<PlacedFeature>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registry.PLACED_FEATURE_REGISTRY, placedFeatureCodec);
+        final Codec<HolderSet<PlacedFeature>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registry.PLACED_FEATURE_REGISTRY, placedFeatureCodec);
 
         // Remove promotePartial calls, as logging at this level is pointless since we don't have a file or a registry name
         // Replace ExtraCodecs calls with Codecs, that include names for what is null or invalid
@@ -189,7 +189,7 @@ public final class MixinHooks
                 StringRepresentable.keys(GenerationStep.Carving.values())
             ).fieldOf("carvers"), "carvers").forGetter(c -> ((BiomeGenerationSettingsAccessor) c).cyanide$getCarvers()),
             Codecs.list(
-                Codecs.nonNullHolderSet(PlacedFeature.LIST_CODEC, "feature"),
+                Codecs.nonNullHolderSet(placedFeatureListCodec, "feature"),
                 (e, i) -> {
                     if (i >= 0 && i < DECORATION_STEPS.length)
                     {
