@@ -11,12 +11,21 @@ import net.minecraft.DetectedVersion;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
 
+import org.junit.jupiter.api.BeforeAll;
+
 import static org.junit.jupiter.api.Assertions.fail;
 
-public interface TestHelper
+public class TestHelper
 {
-    static void bootstrap()
+    private static boolean bootstrapped = false;
+    @BeforeAll
+    public static void bootstrap()
     {
+        if (bootstrapped)
+        {
+            return;
+        }
+        bootstrapped = true;
         try
         {
             Field field = SharedConstants.class.getDeclaredField("CURRENT_VERSION");

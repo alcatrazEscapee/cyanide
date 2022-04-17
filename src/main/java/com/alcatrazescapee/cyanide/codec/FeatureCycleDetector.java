@@ -31,7 +31,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public final class FeatureCycleDetector
 {
-    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Biome> allBiomes)
+    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes)
     {
         return buildFeaturesPerStep(allBiomes, biome -> "???", feature -> "???");
     }
@@ -46,7 +46,7 @@ public final class FeatureCycleDetector
      * @throws FeatureCycleException if a feature was detected.
      */
     @SuppressWarnings("ConstantConditions")
-    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Biome> allBiomes, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
+    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
     {
         // The second method parameter to this method is if it was called recursively / from itself or not. We ignore it entirely
         boolean calledFromTopLevel = true;
@@ -62,9 +62,9 @@ public final class FeatureCycleDetector
         int maxSteps = 0;
 
         // Trace of where FeatureData's are found, in reference to biomes, indexes, and steps
-        final Map<FeatureData, Map<Biome, IntSet>> nodesToTracebacks = new TreeMap<>(compareByStepThenByIndex);
+        final Map<FeatureData, Map<Biome, IntSet>> nodesToTracebacks = new IdentityHashMap<>();
 
-        for (Biome biome : allBiomes)
+        for (Holder<Biome> holder : allBiomes)
         {
             // Loop through all biomes
             // For each biome, we ultimately compute the maxSteps - the maximum number of generation steps of any biome
@@ -73,7 +73,8 @@ public final class FeatureCycleDetector
             // At the end, once we've computed this list, we then have that F1, F2, ... Fn, where Fj must come before Fi if j < i
             // So, we represent that as a graph F1 -> F2 -> ... -> Fn
 
-            final List<FeatureData> flatDataList = Lists.newArrayList();
+            final Biome biome = holder.value();
+            final List<FeatureData> flatDataList = new ArrayList<>();
             final List<HolderSet<PlacedFeature>> features = biome.getGenerationSettings().features();
 
             maxSteps = Math.max(maxSteps, features.size());
@@ -89,7 +90,7 @@ public final class FeatureCycleDetector
 
                     // Track traceback biomes
                     nodesToTracebacks
-                        .computeIfAbsent(data, key -> new HashMap<>(1))
+                        .computeIfAbsent(data, key -> new IdentityHashMap<>(1))
                         .computeIfAbsent(biome, key -> new IntOpenHashSet())
                         .add(biomeIndex);
                     biomeIndex++;
@@ -160,18 +161,18 @@ public final class FeatureCycleDetector
 
                 // This is the most quick and dirty way of trying to find what biomes are involved in a feature cycle
                 // We start with the list of all biomes, and collectively try and remove one biome at a time, redo the ENTIRE feature cycle detection, until we cannot remove any.
-                final List<Biome> biomeSubset = new ArrayList<>(allBiomes);
+                final List<Holder<Biome>> biomeSubset = new ArrayList<>(allBiomes);
                 int biomesLeft;
                 do
                 {
                     biomesLeft = biomeSubset.size();
-                    ListIterator<Biome> biomeSubsetIterator = biomeSubset.listIterator();
+                    ListIterator<Holder<Biome>> biomeSubsetIterator = biomeSubset.listIterator();
 
                     // This iterator is O(n^2) for n = number of biomes
                     // In the best case, we do O(n) calls, and make zero removals (or, do O(n) calls removing the first one every time)
                     while (biomeSubsetIterator.hasNext())
                     {
-                        Biome biome = biomeSubsetIterator.next();
+                        Holder<Biome> biome = biomeSubsetIterator.next();
                         biomeSubsetIterator.remove(); // Consider if we remove this biome
 
                         try

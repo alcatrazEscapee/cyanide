@@ -6,17 +6,11 @@
 package com.alcatrazescapee.cyanide.codec;
 
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.WritableRegistry;
 import net.minecraft.resources.*;
 
-import com.alcatrazescapee.cyanide.mixin.accessor.DelegatingOpsAccessor;
-import com.alcatrazescapee.cyanide.mixin.accessor.RegistryReadOpsAccessor;
-import com.alcatrazescapee.cyanide.mixin.accessor.RegistryWriteOpsAccessor;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -33,20 +27,22 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
     {
         if (ops instanceof RegistryOps<T> registryOps)
         {
-            final RegistryAccess registryAccess = ((RegistryWriteOpsAccessor) registryOps).cyanide$getRegistryAccess();
-            final Optional<Registry<E>> optionalRegistry = registryAccess.ownedRegistry(registryKey);
-            if (optionalRegistry.isEmpty())
+            final Optional<? extends Registry<E>> optionalRegistry = registryOps.registry(registryKey);
+            if (optionalRegistry.isPresent())
             {
-                return DataResult.error("Unknown registry " + registryKey.location());
-            }
+                final Registry<E> registry = optionalRegistry.get();
+                if (!input.isValidInRegistry(registry))
+                {
+                    return DataResult.error("Element - " + input + " - not valid in current registry " + registryKey.location());
+                }
 
-            final Optional<ResourceKey<E>> optionalKey = optionalRegistry.get().getResourceKey(input.value());
-            if (optionalKey.isPresent())
-            {
-                return ResourceLocation.CODEC.encode(optionalKey.get().location(), ops, prefix);
+                return input.unwrap().map(
+                    key -> ResourceLocation.CODEC.encode(key.location(), ops, prefix),
+                    e -> this.elementCodec.encode(e, ops, prefix)
+                );
             }
         }
-        return input.unwrap().map((key) -> ResourceLocation.CODEC.encode(key.location(), ops, prefix), (e) -> this.elementCodec.encode(e, ops, prefix));
+        return this.elementCodec.encode(input.value(), ops, prefix);
     }
 
     @Override
@@ -54,21 +50,20 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
     {
         if (ops instanceof RegistryOps<T> registryOps)
         {
-            final RegistryAccess registryAccess = ((RegistryReadOpsAccessor) registryOps).cyanide$getRegistryAccess();
-            final Optional<Registry<E>> optionalRegistry = registryAccess.ownedRegistry(registryKey);
+            final Optional<? extends Registry<E>> optionalRegistry = registryOps.registry(registryKey);
             if (optionalRegistry.isEmpty())
             {
                 return DataResult.error("Unknown registry " + registryKey);
             }
 
-            @SuppressWarnings("unchecked") final DataResult<Pair<ResourceLocation, T>> optionalResult = ResourceLocation.CODEC.decode(((DelegatingOpsAccessor<T>) registryOps).cyanide$getDelegate(), input);
+            final DataResult<Pair<ResourceLocation, T>> optionalResult = ResourceLocation.CODEC.decode(ops, input);
             if (optionalResult.result().isPresent())
             {
                 final Pair<ResourceLocation, T> result = optionalResult.result().get();
                 final ResourceLocation id = result.getFirst();
                 final ResourceKey<E> key = ResourceKey.create(registryKey, id);
 
-                Optional<RegistryLoader.Bound> loader = registryOps.registryLoader();
+                final Optional<RegistryLoader.Bound> loader = registryOps.registryLoader();
                 if (loader.isPresent())
                 {
                     DataResult<Holder<E>> decoded = loader.get().overrideElementFromResources(registryKey, elementCodec, key, registryOps.getAsJson());
@@ -80,7 +75,7 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
                 }
                 else
                 {
-                    Holder<E> holder = optionalRegistry.get().getOrCreateHolder(key);
+                    final Holder<E> holder = optionalRegistry.get().getOrCreateHolder(key);
                     return DataResult.success(Pair.of(holder, optionalResult.result().get().getSecond()), Lifecycle.stable());
                 }
             }

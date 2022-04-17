@@ -22,9 +22,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class MinecraftMixin
 {
     @Dynamic("Lambda method in Minecraft#createLevel")
-    @Redirect(method = "*(Lnet/minecraft/core/RegistryAccess$RegistryHolder;Lnet/minecraft/world/level/levelgen/WorldGenSettings;Lnet/minecraft/world/level/LevelSettings;Lnet/minecraft/world/level/storage/LevelStorageSource$LevelStorageAccess;Lnet/minecraft/core/RegistryAccess$RegistryHolder;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/world/level/DataPackConfig;)Lnet/minecraft/world/level/storage/WorldData;", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/DataResult;resultOrPartial(Ljava/util/function/Consumer;)Ljava/util/Optional;", remap = false))
-    private static Optional<WorldGenSettings> resultOrPartialWithImprovedErrorMessage(DataResult<WorldGenSettings> result, Consumer<String> onError)
+    @Redirect(method = "*(Lnet/minecraft/core/RegistryAccess;Lnet/minecraft/world/level/levelgen/WorldGenSettings;Lnet/minecraft/world/level/LevelSettings;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/world/level/DataPackConfig;)Lcom/mojang/datafixers/util/Pair;", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/DataResult;getOrThrow(ZLjava/util/function/Consumer;)Ljava/lang/Object;", remap = false))
+    private static <E> E resultOrPartialWithImprovedErrorMessage(DataResult<E> result, boolean allowPartial, Consumer<String> onError)
     {
-        return MixinHooks.printWorldGenSettingsError(result);
+        return MixinHooks.cast(MixinHooks.printWorldGenSettingsError(MixinHooks.cast(result)));
     }
 }

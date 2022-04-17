@@ -8,25 +8,19 @@
     "BiomeSourceMixin",
     "LootTablesMixin",
     "RecipeManagerMixin",
-    "RegistryAccessMixin",
-    "RegistryFileCodecMixin",
-    "RegistryReadOpsMixin",
+    "RegistryLoaderMixin",
+    "RegistryOpsMixin",
     "SinglePoolElementMixin",
     "StructureTemplatePoolMixin",
-    "WorldGenSettingsComponentMixin",
     "accessor.BiomeAccessor",
     "accessor.BiomeClimateSettingsAccessor",
     "accessor.BiomeGenerationSettingsAccessor",
     "accessor.BiomeSpecialEffectsAccessor",
-    "accessor.DelegatingOpsAccessor",
-    "accessor.PlacedFeatureAccessor",
-    "accessor.RegistryReadOpsAccessor",
-    "accessor.RegistryWriteOpsAccessor",
-    "accessor.SinglePoolElementAccessor",
-    "accessor.StructureProcessorAccessor",
-    "accessor.StructureTemplatePoolAccessor"
+    "accessor.RegistryLoaderAccessor",
+    "accessor.SinglePoolElementAccessor"
   ],
   "client": [
+    "client.CreateWorldScreenMixin",
     "client.MinecraftMixin"
   ],
   "injectors": {

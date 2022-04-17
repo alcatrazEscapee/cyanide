@@ -11,19 +11,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import javax.annotation.Nullable;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import net.minecraft.core.*;
-import net.minecraft.resources.RegistryLoader;
-import net.minecraft.resources.RegistryResourceAccess;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.*;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.sounds.Music;
@@ -41,32 +36,32 @@ import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 
+import net.minecraftforge.common.ForgeHooks;
+import net.minecraftforge.server.ServerLifecycleHooks;
+
 import com.alcatrazescapee.cyanide.mixin.accessor.*;
 import com.mojang.datafixers.util.Either;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import org.slf4j.Logger;
 
 public final class MixinHooks
 {
     private static final GenerationStep.Decoration[] DECORATION_STEPS = GenerationStep.Decoration.values();
-    private static final Logger LOGGER = LogManager.getLogger();
-
-    private static final ThreadLocal<RegistryAccess> CAPTURED_REGISTRY_ACCESS = ThreadLocal.withInitial(() -> null);
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static Codec<Holder<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
 
-    public static void captureRegistryAccess(RegistryAccess registryAccess)
+    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStepAndPopulateErrors(List<Holder<Biome>> allBiomes)
     {
-        CAPTURED_REGISTRY_ACCESS.set(registryAccess);
-    }
-
-    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStepAndPopulateErrors(List<Biome> allBiomes)
-    {
-        final RegistryAccess registryAccess = CAPTURED_REGISTRY_ACCESS.get();
-        if (registryAccess != null)
+        // This is delayed enough (as the underlying function is made lazy), so we can just retrieve the registry access from the server
+        final MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null)
         {
+            final RegistryAccess registryAccess = server.registryAccess();
             final Registry<Biome> biomeRegistry = registryAccess.registryOrThrow(Registry.BIOME_REGISTRY);
             final Registry<PlacedFeature> placedFeatureRegistry = registryAccess.registryOrThrow(Registry.PLACED_FEATURE_REGISTRY);
             return FeatureCycleDetector.buildFeaturesPerStep(allBiomes, b -> idFor(biomeRegistry, b), f -> idFor(placedFeatureRegistry, f));
@@ -74,22 +69,24 @@ public final class MixinHooks
         return FeatureCycleDetector.buildFeaturesPerStep(allBiomes);
     }
 
-    public static Optional<WorldGenSettings> printWorldGenSettingsError(DataResult<WorldGenSettings> result)
+    public static WorldGenSettings printWorldGenSettingsError(DataResult<WorldGenSettings> result)
     {
-        return result.resultOrPartial(err -> LOGGER.error(
+        return result.getOrThrow(false, err -> LOGGER.error(
             "Error parsing worldgen settings after loading data packs\n" +
             "(This is usually an error due to invalid dimensions.)\n\n" +
             err.replaceAll("; ", "\n") +
             "\n"
-            ));
+        ));
     }
 
-    public static void readRegistries(RegistryAccess.Writable registryAccess, DynamicOps<JsonElement> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData, RegistryLoader loader)
+    public static void readRegistries(RegistryAccess.Writable writable, DynamicOps<JsonElement> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData, RegistryLoader loader)
     {
         DataResult<Unit> root = DataResult.success(Unit.INSTANCE);
+
+        final RegistryLoader.Bound bound = loader.bind(writable);
         for (RegistryAccess.RegistryData<?> data : registryData.values())
         {
-            root = readRegistry(root, registryAccess, ops, data, loader);
+            root = readRegistry(root, bound, ops, data);
         }
         if (root.error().isPresent())
         {
@@ -97,13 +94,11 @@ public final class MixinHooks
         }
     }
 
-    public static <E> DataResult<Unit> readRegistry(DataResult<Unit> result, RegistryAccess.Writable registryAccess, DynamicOps<JsonElement> ops, RegistryAccess.RegistryData<E> data, RegistryLoader loader)
+    public static <E> DataResult<Unit> readRegistry(DataResult<Unit> result, RegistryLoader.Bound bound, DynamicOps<JsonElement> ops, RegistryAccess.RegistryData<E> data)
     {
-        final ResourceKey<? extends Registry<E>> key = data.key();
-        final WritableRegistry<E> writeable = registryAccess.ownedWritableRegistryOrThrow(key);
-        return result.flatMap(u -> loader.overrideRegistryFromResources(writeable, key, data.codec(), ops)
+        return result.flatMap(u -> bound.overrideRegistryFromResources(data.key(), data.codec(), ops)
             .map(e -> Unit.INSTANCE)
-            .mapError(e -> "\n\nError(s) loading registry " + key.location() + ":\n" + e.replaceAll("; ", "\n")));
+            .mapError(e -> "\n\nError(s) loading registry " + data.key().location() + ":\n" + e.replaceAll("; ", "\n")));
     }
 
     public static <E> DataResult<E> appendRegistryError(DataResult<E> result, ResourceKey<? extends Registry<?>> registry)
@@ -116,28 +111,32 @@ public final class MixinHooks
         return result.mapError(e -> appendErrorLocation(e, "reference to \"" + id + "\" from " + registry.location()));
     }
 
-//    public static <E> DataResult<E> appendRegistryFileError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registry, ResourceLocation id)
-//    {
-//        result = result.mapError(e -> appendErrorLocation(e, "file \"" + registryFile(registry, id) + '"'));
-//        return appendRegistryEntrySourceError(result, ops, registry, id);
-//    }
+    public static <E> DataResult<E> appendRegistryFileError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registry, ResourceLocation id)
+    {
+        result = result.mapError(e -> appendErrorLocation(e, "file \"" + registryFile(registry, id) + '"'));
+        return appendRegistryEntrySourceError(result, ops, registry, id);
+    }
 
-
-//    public static <E> DataResult<E> appendRegistryEntrySourceError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registryKey, ResourceLocation resourceLocation)
-//    {
-//        return result.mapError(error -> {
-//            if (((RegistryReadOpsAccessor) ops).cyanide$getResources() instanceof ResourceAccessWrapper wrapper)
-//            {
-//                try
-//                {
-//                    final Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation));
-//                    return appendErrorLocation(error, "data pack " + resource.getSourceName());
-//                }
-//                catch (IOException e) { /* Ignore */ }
-//            }
-//            return error;
-//        });
-//    }
+    public static <E> DataResult<E> appendRegistryEntrySourceError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registryKey, ResourceLocation resourceLocation)
+    {
+        return result.mapError(error -> {
+            if (ops instanceof RegistryOps<JsonElement> registryOps && registryOps.registryLoader().isPresent())
+            {
+                final RegistryLoader.Bound bound = registryOps.registryLoader().get();
+                final RegistryResourceAccess resourceAccess = ((RegistryLoaderAccessor) bound.loader()).accessor$getResources();
+                if (resourceAccess instanceof ResourceAccessWrapper wrapper)
+                {
+                    try
+                    {
+                        final Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation));
+                        return appendErrorLocation(error, "data pack " + resource.getSourceName());
+                    }
+                    catch (IOException e) { /* Ignore */ }
+                }
+            }
+            return error;
+        });
+    }
 
     public static Codec<Biome> makeBiomeCodec()
     {
@@ -171,23 +170,23 @@ public final class MixinHooks
         // Replace the Codec.list() with one that has indexes
         // Don't use the codec directly, instead use an improved registry entry codec implementation
         final Codec<PlacedFeature> placedFeatureCodec = RecordCodecBuilder.create(instance -> instance.group(
-            Codecs.reporting(ConfiguredFeature.CODEC.fieldOf("feature"), "feature").forGetter(c -> MixinHooks.<PlacedFeatureAccessor>cast(c).cyanide$getFeature()),
+            Codecs.reporting(ConfiguredFeature.CODEC.fieldOf("feature"), "feature").forGetter(PlacedFeature::feature),
             Codecs.reporting(Codecs.list(PlacementModifier.CODEC).fieldOf("placement"), "placement").forGetter(PlacedFeature::placement)
         ).apply(instance, PlacedFeature::new));
         final Codec<HolderSet<PlacedFeature>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registry.PLACED_FEATURE_REGISTRY, placedFeatureCodec);
 
         // Remove promotePartial calls, as logging at this level is pointless since we don't have a file or a registry name
-        // Replace ExtraCodecs calls with Codecs, that include names for what is null or invalid
+        // Use much improved codecs for Codecs.list(), registry codecs
         // Improve the feature list with one that reports generation steps
         // Add additional calls to Codecs.reporting() to contextualize where things are going wrong.
         final MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Codecs.reporting(Codec.simpleMap(
                 GenerationStep.Carving.CODEC,
-                Codecs.nonNullHolderSet(ConfiguredWorldCarver.LIST_CODEC, "carver"),
+                ConfiguredWorldCarver.LIST_CODEC,
                 StringRepresentable.keys(GenerationStep.Carving.values())
             ).fieldOf("carvers"), "carvers").forGetter(c -> ((BiomeGenerationSettingsAccessor) c).cyanide$getCarvers()),
             Codecs.list(
-                Codecs.nonNullHolderSet(placedFeatureListCodec, "feature"),
+                placedFeatureListCodec,
                 (e, i) -> {
                     if (i >= 0 && i < DECORATION_STEPS.length)
                     {
@@ -202,7 +201,7 @@ public final class MixinHooks
         // Use improved enum codec for biome category, and all the above codecs
         return RecordCodecBuilder.create(instance -> instance.group(
             climateSettingsCodec.forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getClimateSettings()),
-            Biome.BiomeCategory.CODEC.fieldOf("category").forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getBiomeCategory()),
+            Codecs.fromEnum("category", Biome.BiomeCategory::values, Biome.BiomeCategory::byName).fieldOf("category").forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getBiomeCategory()),
             Codecs.reporting(specialEffectsCodec.fieldOf("effects"), "effects").forGetter(Biome::getSpecialEffects),
             biomeGenerationSettingsCodec.forGetter(Biome::getGenerationSettings),
             MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings)
@@ -295,6 +294,6 @@ public final class MixinHooks
     {
         return registry.getResourceKey(element)
             .map(e -> e.location().toString())
-            .orElseGet(() -> "[Unknown " + registry.key().location().toString() + ']');
+            .orElseGet(() -> "[Unknown " + registry.key().location() + ']');
     }
 }
