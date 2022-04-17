@@ -8,13 +8,13 @@ package com.alcatrazescapee.cyanide.mixin;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.logging.log4j.Logger;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
+import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,7 +28,7 @@ public abstract class RecipeManagerMixin
     /**
      * Improve logging message, don't dump stacktrace
      */
-    @Redirect(method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V", at = @At(value = "INVOKE", target = "Lorg/apache/logging/log4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
+    @Redirect(method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private void simplifyRecipeErrors(Logger logger, String message, Object p0, Object p1)
     {
         MixinHooks.cleanRecipeError(logger, message, p0, p1);

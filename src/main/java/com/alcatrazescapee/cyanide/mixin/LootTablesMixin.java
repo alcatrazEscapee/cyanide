@@ -5,10 +5,10 @@
 
 package com.alcatrazescapee.cyanide.mixin;
 
-import org.apache.logging.log4j.Logger;
 import net.minecraft.world.level.storage.loot.LootTables;
 
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
+import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Dynamic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

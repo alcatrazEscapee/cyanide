@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.HolderSetCodec;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.StringRepresentable;
@@ -120,80 +119,6 @@ public final class Codecs
     */
     public static <E> Codec<HolderSet<E>> registryEntryListCodec(ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec)
     {
-        return HolderSetCodec.create(registryKey, new RegistryEntryCodec<>(registryKey, ShapedCodec.likeString(elementCodec)), true);
-        /*return either(
-            ShapedCodec.likeString(new RegistryEntryCodec<>(registryKey, elementCodec)),
-            ShapedCodec.likeMap(elementCodec)
-        ).xmap(e -> e.map(e1 -> e1, e2 -> Hold), Either::left);*/
-    }
-
-//    private static <E> Codec<List<Holder<E>>> homogenousList(Codec<Holder<E>> codec, ResourceKey<? extends Registry<E>> key, Codec<E> elementCodec)
-//    {
-//
-//        Function<List<Holder<E>>, DataResult<List<Holder<E>>>> function = ExtraCodecs.ensureHomogenous(Holder::kind);
-//        Codec<List<Holder<E>>> listCodec = codec.listOf().flatXmap(function, function);
-//        return either(
-//            ShapedCodec.likeString(new RegistryEntryCodec<>(key, elementCodec).listOf()),
-//            ShapedCodec.likeMap(elementCodec)
-//        ).xmap((e1) -> e1.map((e2) -> e2, List::of), (list) -> list.size() == 1 ? Either.right(list.get(0)) : Either.left(list));
-//    }
-
-    public static <T> MapCodec<Supplier<T>> nonNullSupplier(MapCodec<Supplier<T>> codec, String key)
-    {
-        final Function<Supplier<T>, DataResult<Supplier<T>>> map = nonNullSupplierCheck(key);
-        return codec.flatXmap(map, map);
-    }
-
-    /**
-     * Doesn't print the supplier (because really, why would you).
-     */
-    public static <T> Function<Supplier<T>, DataResult<Supplier<T>>> nonNullSupplierCheck(String key)
-    {
-        return supplier -> {
-            try
-            {
-                if (supplier.get() == null)
-                {
-                    return DataResult.error("Missing " + key);
-                }
-            }
-            catch (Exception e)
-            {
-                return DataResult.error("Invalid " + key + ": " + e.getMessage());
-            }
-            return DataResult.success(supplier, Lifecycle.stable());
-        };
-    }
-
-    public static <T> Codec<HolderSet<T>> nonNullHolderSet(Codec<HolderSet<T>> codec, String key)
-    {
-        final Function<HolderSet<T>, DataResult<HolderSet<T>>> map = nonNullHolderListCheck(key);
-        return codec.flatXmap(map, map);
-    }
-
-    /**
-     * Specific name and better errors.
-     */
-    public static <T> Function<HolderSet<T>, DataResult<HolderSet<T>>> nonNullHolderListCheck(String key)
-    {
-        return list -> {
-            final List<String> errors = new ArrayList<>();
-            for (int i = 0; i < list.size(); ++i)
-            {
-                final Holder<T> holder = list.get(i);
-                try
-                {
-                    if (!holder.isBound())
-                    {
-                        errors.add("Missing " + key + " at index " + i);
-                    }
-                }
-                catch (Exception exception)
-                {
-                    errors.add("Invalid " + key + " at index " + i + ": " + exception.getMessage());
-                }
-            }
-            return !errors.isEmpty() ? DataResult.error(String.join(", ", errors)) : DataResult.success(list, Lifecycle.stable());
-        };
+        return new RegistryListCodec<>(registryKey, registryEntryCodec(registryKey, elementCodec), false);
     }
 }

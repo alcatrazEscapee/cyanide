@@ -1,7 +1,7 @@
 # Reverse gitignore - explicitly include files
 *
 !*/
-!.gitignore
+!/.gitignore
 
 !.github/**/*.yml
 !gradle/wrapper/gradle-wrapper.jar

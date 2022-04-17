@@ -8,29 +8,23 @@ package com.alcatrazescapee.cyanide.codec;
 import java.util.*;
 import java.util.function.Consumer;
 
+import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.*;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 import com.mojang.serialization.Codec;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class FeatureCycleTest
+public class FeatureCycleTest extends TestHelper
 {
-    final Map<Object, String> names = new HashMap<>();
-
-    @BeforeAll
-    public static void boostrap()
-    {
-        TestHelper.bootstrap();
-    }
+    final Map<Object, String> names = new IdentityHashMap<>();
 
     @BeforeEach
     public void clear()
@@ -41,70 +35,72 @@ public class FeatureCycleTest
     @Test
     public void testDuplicateAdjacentFeaturesCycle()
     {
-        final PlacedFeature feature = feature("duplicate_feature");
+        final Holder<PlacedFeature> feature = feature("duplicate_feature");
 
         expectCycle(biome("biome_with_adjacent_features", b -> b
-            .addFeature(0, () -> feature)
-            .addFeature(0, () -> feature)));
+            .addFeature(0, feature)
+            .addFeature(0, feature)));
     }
 
     @Test
     public void testDuplicateNonAdjacentFeaturesCycle()
     {
-        final PlacedFeature feature = feature("duplicate");
-        final PlacedFeature innocent = feature("innocent");
+        final Holder<PlacedFeature> feature = feature("duplicate");
+        final Holder<PlacedFeature> innocent = feature("innocent");
 
         expectCycle(biome("biome_with_duplicate_non_adjacent_features", b -> b
-            .addFeature(0, () -> feature)
-            .addFeature(0, () -> innocent)
-            .addFeature(0, () -> feature)));
+            .addFeature(0, feature)
+            .addFeature(0, innocent)
+            .addFeature(0, feature)));
     }
 
     @Test
     public void testDuplicateInDifferentStepsNoCycle()
     {
-        final PlacedFeature feature = feature("innocent");
+        final Holder<PlacedFeature> feature = feature("innocent");
 
         expectNoCycle(biome("biome_same_feature_different_steps", b -> b
-            .addFeature(0, () -> feature)
-            .addFeature(1, () -> feature)));
+            .addFeature(0, feature)
+            .addFeature(1, feature)));
     }
 
     @Test
     public void testExampleWithCycle()
     {
-        final PlacedFeature dummy1 = feature("dummy1");
-        final PlacedFeature dummy2 = feature("dummy1");
-        final PlacedFeature target1 = feature("target1");
-        final PlacedFeature target2 = feature("target2");
-        final PlacedFeature diversion = feature("diversion");
+        final Holder<PlacedFeature> dummy1 = feature("dummy1");
+        final Holder<PlacedFeature> dummy2 = feature("dummy1");
+        final Holder<PlacedFeature> target1 = feature("target1");
+        final Holder<PlacedFeature> target2 = feature("target2");
+        final Holder<PlacedFeature> diversion = feature("diversion");
 
         expectCycle(
             biome("biome1_2", b -> b
-                .addFeature(0, () -> target1)
-                .addFeature(0, () -> dummy1)
-                .addFeature(0, () -> target2)),
+                .addFeature(0, target1)
+                .addFeature(0, dummy1)
+                .addFeature(0, target2)),
             biome("biome2_1", b -> b
-                .addFeature(0, () -> target2)
-                .addFeature(0, () -> dummy2)
-                .addFeature(0, () -> target1)),
+                .addFeature(0, target2)
+                .addFeature(0, dummy2)
+                .addFeature(0, target1)),
             biome("biome3", b -> b
-                .addFeature(0, () -> dummy2)
-                .addFeature(0, () -> diversion)
-                .addFeature(0, () -> dummy1)));
+                .addFeature(0, dummy2)
+                .addFeature(0, diversion)
+                .addFeature(0, dummy1)));
     }
 
-    private void expectNoCycle(Biome... biomes)
+    @SafeVarargs
+    private void expectNoCycle(Holder<Biome>... biomes)
     {
         // Neither should throw
-        final List<Biome> list = Arrays.asList(biomes);
+        final List<Holder<Biome>> list = Arrays.asList(biomes);
         FeatureCycleDetector.buildFeaturesPerStep(list);
         biomeSourceBuildFeaturesPerStep(list);
     }
 
-    private void expectCycle(Biome... biomes)
+    @SafeVarargs
+    private void expectCycle(Holder<Biome>... biomes)
     {
-        final List<Biome> list = Arrays.asList(biomes);
+        final List<Holder<Biome>> list = Arrays.asList(biomes);
         try
         {
             FeatureCycleDetector.buildFeaturesPerStep(list, o -> names.getOrDefault(o, "biome?"), o -> names.getOrDefault(o, "feature?"));
@@ -118,7 +114,8 @@ public class FeatureCycleTest
         assertThrows(IllegalStateException.class, () -> biomeSourceBuildFeaturesPerStep(list), "BiomeSource did not detect a feature cycle?");
     }
 
-    private void biomeSourceBuildFeaturesPerStep(List<Biome> biomes)
+    @SuppressWarnings("ConstantConditions")
+    private void biomeSourceBuildFeaturesPerStep(List<Holder<Biome>> biomes)
     {
         new BiomeSource(biomes) {
             @Override
@@ -134,22 +131,23 @@ public class FeatureCycleTest
             }
 
             @Override
-            public Biome getNoiseBiome(int i, int j, int k, Climate.Sampler sampler)
+            public Holder<Biome> getNoiseBiome(int i, int j, int k, Climate.Sampler sampler)
             {
                 return null;
             }
-        };
+        }.featuresPerStep();
     }
 
-    private PlacedFeature feature(String name)
+    private Holder<PlacedFeature> feature(String name)
     {
-        final ConfiguredFeature<?, ?> feature = Feature.NO_OP.configured(FeatureConfiguration.NONE);
-        final PlacedFeature placed = new PlacedFeature(() -> feature, new ArrayList<>());
+        // nextId is used to make all the features unique, as equality now is done automatically via records
+        final ConfiguredFeature<?, ?> feature = new ConfiguredFeature<>(Feature.NO_OP, NoneFeatureConfiguration.INSTANCE);
+        final PlacedFeature placed = new PlacedFeature(Holder.direct(feature), new ArrayList<>());
         names.put(placed, name);
-        return placed;
+        return Holder.direct(placed);
     }
 
-    private Biome biome(String name, Consumer<BiomeGenerationSettings.Builder> features)
+    private Holder<Biome> biome(String name, Consumer<BiomeGenerationSettings.Builder> features)
     {
         final BiomeGenerationSettings.Builder builder = new BiomeGenerationSettings.Builder();
         features.accept(builder);
@@ -171,6 +169,6 @@ public class FeatureCycleTest
             .generationSettings(builder.build())
             .build();
         names.put(biome, name);
-        return biome;
+        return Holder.direct(biome);
     }
 }
