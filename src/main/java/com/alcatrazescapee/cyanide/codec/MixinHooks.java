@@ -9,14 +9,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
-
-import javax.annotation.Nullable;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
-import net.minecraft.core.*;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.Resource;
@@ -36,9 +36,6 @@ import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorList;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 
-import net.minecraftforge.common.ForgeHooks;
-import net.minecraftforge.server.ServerLifecycleHooks;
-
 import com.alcatrazescapee.cyanide.mixin.accessor.*;
 import com.mojang.datafixers.util.Either;
 import com.mojang.logging.LogUtils;
@@ -53,12 +50,18 @@ public final class MixinHooks
 {
     private static final GenerationStep.Decoration[] DECORATION_STEPS = GenerationStep.Decoration.values();
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static MinecraftServer SERVER;
     private static Codec<Holder<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
+
+    public static void setServer(MinecraftServer server)
+    {
+        SERVER = server;
+    }
 
     public static List<BiomeSource.StepFeatureData> buildFeaturesPerStepAndPopulateErrors(List<Holder<Biome>> allBiomes)
     {
         // This is delayed enough (as the underlying function is made lazy), so we can just retrieve the registry access from the server
-        final MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        final MinecraftServer server = SERVER;
         if (server != null)
         {
             final RegistryAccess registryAccess = server.registryAccess();
