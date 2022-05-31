@@ -75,8 +75,10 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
                 }
                 else
                 {
-                    final Holder<E> holder = optionalRegistry.get().getOrCreateHolder(key);
-                    return DataResult.success(Pair.of(holder, optionalResult.result().get().getSecond()), Lifecycle.stable());
+                    return optionalRegistry.get()
+                        .getOrCreateHolder(key)
+                        .map(holder -> Pair.of(holder, result.getSecond()))
+                        .setLifecycle(Lifecycle.stable());
                 }
             }
         }

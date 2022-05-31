@@ -5,7 +5,7 @@
   "compatibilityLevel": "JAVA_16",
   "mixins": [
     "BiomeMixin",
-    "BiomeSourceMixin",
+    "FeatureSorterMixin",
     "LootTablesMixin",
     "MinecraftServerMixin",
     "RecipeManagerMixin",
@@ -21,8 +21,7 @@
     "accessor.SinglePoolElementAccessor"
   ],
   "client": [
-    "client.CreateWorldScreenMixin",
-    "client.MinecraftMixin"
+    "client.CreateWorldScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 0

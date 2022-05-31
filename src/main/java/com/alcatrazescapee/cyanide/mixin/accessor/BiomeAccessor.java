@@ -18,14 +18,11 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface BiomeAccessor
 {
     @Invoker("<init>")
-    static Biome cyanide$new(Biome.ClimateSettings climateSettings, Biome.BiomeCategory category, BiomeSpecialEffects specialEffects, BiomeGenerationSettings generationSettings, MobSpawnSettings mobSettings)
+    static Biome cyanide$new(Biome.ClimateSettings climateSettings, BiomeSpecialEffects specialEffects, BiomeGenerationSettings generationSettings, MobSpawnSettings mobSettings)
     {
         throw new AssertionError();
     }
 
     @Accessor("climateSettings")
     Biome.ClimateSettings cyanide$getClimateSettings();
-
-    @Accessor("biomeCategory")
-    Biome.BiomeCategory cyanide$getBiomeCategory();
 }

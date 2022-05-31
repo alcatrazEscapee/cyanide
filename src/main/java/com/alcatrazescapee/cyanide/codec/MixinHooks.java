@@ -44,21 +44,23 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 public final class MixinHooks
 {
     private static final GenerationStep.Decoration[] DECORATION_STEPS = GenerationStep.Decoration.values();
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static MinecraftServer SERVER;
-    private static Codec<Holder<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
+    private static @Nullable MinecraftServer SERVER;
+    private static @Nullable Codec<Holder<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
 
     public static void setServer(MinecraftServer server)
     {
         SERVER = server;
     }
 
-    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStepAndPopulateErrors(List<Holder<Biome>> allBiomes)
+    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStepAndPopulateErrors(List<Holder<Biome>> allBiomes, Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures)
     {
         // This is delayed enough (as the underlying function is made lazy), so we can just retrieve the registry access from the server
         final MinecraftServer server = SERVER;
@@ -67,9 +69,9 @@ public final class MixinHooks
             final RegistryAccess registryAccess = server.registryAccess();
             final Registry<Biome> biomeRegistry = registryAccess.registryOrThrow(Registry.BIOME_REGISTRY);
             final Registry<PlacedFeature> placedFeatureRegistry = registryAccess.registryOrThrow(Registry.PLACED_FEATURE_REGISTRY);
-            return FeatureCycleDetector.buildFeaturesPerStep(allBiomes, b -> idFor(biomeRegistry, b), f -> idFor(placedFeatureRegistry, f));
+            return FeatureCycleDetector.buildFeaturesPerStep(allBiomes, biomeFeatures, b -> idFor(biomeRegistry, b), f -> idFor(placedFeatureRegistry, f));
         }
-        return FeatureCycleDetector.buildFeaturesPerStep(allBiomes);
+        return FeatureCycleDetector.buildFeaturesPerStep(allBiomes, biomeFeatures);
     }
 
     public static WorldGenSettings printWorldGenSettingsError(DataResult<WorldGenSettings> result)
@@ -101,7 +103,8 @@ public final class MixinHooks
     {
         return result.flatMap(u -> bound.overrideRegistryFromResources(data.key(), data.codec(), ops)
             .map(e -> Unit.INSTANCE)
-            .mapError(e -> "\n\nError(s) loading registry " + data.key().location() + ":\n" + e.replaceAll("; ", "\n")));
+            .mapError(e -> "\n\nError(s) loading registry " + data.key().location() + ":\n" + e.replaceAll("; ", "\n")))
+            .setPartial(Unit.INSTANCE);
     }
 
     public static <E> DataResult<E> appendRegistryError(DataResult<E> result, ResourceKey<? extends Registry<?>> registry)
@@ -129,12 +132,11 @@ public final class MixinHooks
                 final RegistryResourceAccess resourceAccess = ((RegistryLoaderAccessor) bound.loader()).accessor$getResources();
                 if (resourceAccess instanceof ResourceAccessWrapper wrapper)
                 {
-                    try
+                    final @Nullable Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation)).orElse(null);
+                    if (resource != null)
                     {
-                        final Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation));
-                        return appendErrorLocation(error, "data pack " + resource.getSourceName());
+                        return appendErrorLocation(error, "data pack " + resource.sourcePackId());
                     }
-                    catch (IOException e) { /* Ignore */ }
                 }
             }
             return error;
@@ -146,10 +148,10 @@ public final class MixinHooks
         // Use improved .optionalFieldOf for temperature modifier, and use an improved enum codec for it.
         // Add Codecs.reporting() to some fields.
         final MapCodec<Biome.ClimateSettings> climateSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codecs.reporting(Codecs.fromEnum("precipitation", Biome.Precipitation::values, Biome.Precipitation::byName).fieldOf("precipitation"), "precipitation").forGetter(c -> ((BiomeClimateSettingsAccessor) c).cyanide$getPrecipitation()),
-            Codecs.reporting(Codec.FLOAT.fieldOf("temperature"), "temperature").forGetter(c -> ((BiomeClimateSettingsAccessor) c).cyanide$getTemperature()),
-            Codecs.optionalFieldOf(Codecs.fromEnum("temperature modifier", Biome.TemperatureModifier::values, Biome.TemperatureModifier::byName), "temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(c -> ((BiomeClimateSettingsAccessor) c).cyanide$getTemperatureModifier()),
-            Codecs.reporting(Codec.FLOAT.fieldOf("downfall"), "downfall").forGetter(c -> ((BiomeClimateSettingsAccessor) c).cyanide$getDownfall())
+            Codecs.reporting(Codecs.fromEnum("precipitation", Biome.Precipitation::values).fieldOf("precipitation"), "precipitation").forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getPrecipitation()),
+            Codecs.reporting(Codec.FLOAT.fieldOf("temperature"), "temperature").forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getTemperature()),
+            Codecs.optionalFieldOf(Codecs.fromEnum("temperature modifier", Biome.TemperatureModifier::values), "temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getTemperatureModifier()),
+            Codecs.reporting(Codec.FLOAT.fieldOf("downfall"), "downfall").forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getDownfall())
         ).apply(instance, BiomeClimateSettingsAccessor::cyanide$new));
 
         // Redirect many .optionalFieldOf calls to Codecs
@@ -161,7 +163,7 @@ public final class MixinHooks
             Codec.INT.fieldOf("sky_color").forGetter(BiomeSpecialEffects::getSkyColor),
             Codecs.optionalFieldOf(Codec.INT, "foliage_color").forGetter(BiomeSpecialEffects::getFoliageColorOverride),
             Codecs.optionalFieldOf(Codec.INT, "grass_color").forGetter(BiomeSpecialEffects::getGrassColorOverride),
-            Codecs.optionalFieldOf(Codecs.fromEnum("grass color modifier", BiomeSpecialEffects.GrassColorModifier::values, BiomeSpecialEffects.GrassColorModifier::byName), "grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
+            Codecs.optionalFieldOf(Codecs.fromEnum("grass color modifier", BiomeSpecialEffects.GrassColorModifier::values), "grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
             Codecs.optionalFieldOf(AmbientParticleSettings.CODEC, "particle").forGetter(BiomeSpecialEffects::getAmbientParticleSettings),
             Codecs.optionalFieldOf(SoundEvent.CODEC, "ambient_sound").forGetter(BiomeSpecialEffects::getAmbientLoopSoundEvent),
             Codecs.optionalFieldOf(AmbientMoodSettings.CODEC, "mood_sound").forGetter(BiomeSpecialEffects::getAmbientMoodSettings),
@@ -204,7 +206,6 @@ public final class MixinHooks
         // Use improved enum codec for biome category, and all the above codecs
         return RecordCodecBuilder.create(instance -> instance.group(
             climateSettingsCodec.forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getClimateSettings()),
-            Codecs.fromEnum("category", Biome.BiomeCategory::values, Biome.BiomeCategory::byName).fieldOf("category").forGetter(b -> MixinHooks.<BiomeAccessor>cast(b).cyanide$getBiomeCategory()),
             Codecs.reporting(specialEffectsCodec.fieldOf("effects"), "effects").forGetter(Biome::getSpecialEffects),
             biomeGenerationSettingsCodec.forGetter(Biome::getGenerationSettings),
             MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings)
@@ -237,6 +238,7 @@ public final class MixinHooks
         return ensureNewLineSuffix(error) + "\tat: " + at;
     }
 
+    @NotNull
     @SuppressWarnings("unchecked")
     public static <T> T cast(Object o)
     {

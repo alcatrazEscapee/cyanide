@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.function.*;
 import java.util.stream.Collectors;
 
+import com.google.common.base.Suppliers;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
@@ -87,20 +88,24 @@ public final class Codecs
     }
 
     /**
-     * Like {@link StringRepresentable#fromEnum(Supplier, Function)} but with named errors.
+     * Like {@link StringRepresentable#fromEnum(Supplier)} but with named errors, and also doesn't evaluate the enum values immediately.
      */
-    public static <E extends Enum<E> & StringRepresentable> Codec<E> fromEnum(String id, Supplier<E[]> enumValues, Function<? super String, ? extends E> enumName)
+    public static <E extends Enum<E> & StringRepresentable> Codec<E> fromEnum(String id, Supplier<E[]> enumValues)
     {
-        final E[] values = enumValues.get();
+        final Supplier<E[]> values = Suppliers.memoize(enumValues::get);
+        final Supplier<Function<String, E>> nameResolver = Suppliers.memoize(() -> {
+            final Map<String, E> map = Arrays.stream(values.get()).collect(Collectors.toMap(StringRepresentable::getSerializedName, Function.identity()));
+            return map::get;
+        });
         return ExtraCodecs.orCompressed(
             Codec.STRING.flatXmap(
-                name -> Optional.ofNullable(enumName.apply(name))
+                name -> Optional.ofNullable(nameResolver.get().apply(name))
                     .map(DataResult::success)
-                    .orElseGet(() -> DataResult.error("Unknown " + id + " name: " + name + ", expected one of [" + Arrays.stream(values).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]")),
+                    .orElseGet(() -> DataResult.error("Unknown " + id + " name: " + name + ", expected one of [" + Arrays.stream(values.get()).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]")),
                 value -> Optional.of(value.getSerializedName())
                     .map(DataResult::success)
                     .orElseGet(() -> DataResult.error("Unknown name for " + id + ": " + value))),
-            ExtraCodecs.idResolverCodec(Enum::ordinal, index -> index >= 0 && index < values.length ? values[index] : null, -1)
+            ExtraCodecs.idResolverCodec(Enum::ordinal, index -> index >= 0 && index < values.get().length ? values.get()[index] : null, -1)
         );
     }
 

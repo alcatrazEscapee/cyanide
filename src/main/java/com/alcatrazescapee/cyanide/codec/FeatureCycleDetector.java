@@ -19,6 +19,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -27,13 +28,13 @@ import it.unimi.dsi.fastutil.objects.*;
 
 public final class FeatureCycleDetector
 {
-    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes)
+    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes, Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures)
     {
-        return buildFeaturesPerStep(allBiomes, biome -> "???", feature -> "???");
+        return buildFeaturesPerStep(allBiomes, biomeFeatures, biome -> "???", feature -> "???");
     }
 
     /**
-     * A modified version of {@link BiomeSource#buildFeaturesPerStep(List, boolean)} with several improvements, in order to properly report errors.
+     * A modified version of {@link FeatureSorter#buildFeaturesPerStep(List, Function, boolean)} with several improvements, in order to properly report errors.
      * Added comments, removed vanilla's slow as heck "try this again by removing biomes until it doesn't break" detector and replace with one that is able to track the detected cycle during the DFS.
      *
      * @param biomeName A function to name biomes in error messages
@@ -42,7 +43,7 @@ public final class FeatureCycleDetector
      * @throws FeatureCycleException if a feature was detected.
      */
     @SuppressWarnings("ConstantConditions")
-    public static List<BiomeSource.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
+    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes, Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
     {
         // The second method parameter to this method is if it was called recursively / from itself or not. We ignore it entirely
         boolean calledFromTopLevel = true;
@@ -74,7 +75,7 @@ public final class FeatureCycleDetector
 
             final Biome biome = holder.value();
             final List<FeatureData> flatDataList = new ArrayList<>();
-            final List<HolderSet<PlacedFeature>> features = biome.getGenerationSettings().features();
+            final List<HolderSet<PlacedFeature>> features = biomeFeatures.apply(holder);
 
             maxSteps = Math.max(maxSteps, features.size());
 
@@ -181,7 +182,7 @@ public final class FeatureCycleDetector
                             // Then, we try and build features again, but without this biome
                             // If this passes, we include the biome again below.
                             // If it fails, the boolean above means that the "false" will just immediately throw an exception
-                            buildFeaturesPerStep(biomeSubset, biomeName, featureName);
+                            buildFeaturesPerStep(biomeSubset, biomeFeatures, biomeName, featureName);
                         }
                         catch (IllegalStateException e)
                         {
@@ -200,7 +201,7 @@ public final class FeatureCycleDetector
         Collections.reverse(sortedFeatureData);
 
         // This is the intended result: A list just of features to be applied at each given generation step
-        final ImmutableList.Builder<BiomeSource.StepFeatureData> featuresPerStepData = ImmutableList.builder();
+        final ImmutableList.Builder<FeatureSorter.StepFeatureData> featuresPerStepData = ImmutableList.builder();
 
         for (int stepIndex = 0; stepIndex < maxSteps; ++stepIndex)
         {
@@ -217,7 +218,7 @@ public final class FeatureCycleDetector
                 featureToIndexMapping.put(featuresAtStep.get(index), index);
             }
 
-            featuresPerStepData.add(new BiomeSource.StepFeatureData(featuresAtStep, featureToIndexMapping));
+            featuresPerStepData.add(new FeatureSorter.StepFeatureData(featuresAtStep, featureToIndexMapping));
         }
 
         return featuresPerStepData.build();

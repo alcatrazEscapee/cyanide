@@ -5,6 +5,7 @@
 
 package com.alcatrazescapee.cyanide.mixin;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 import com.google.gson.JsonElement;
@@ -12,6 +13,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.WritableRegistry;
 import net.minecraft.resources.RegistryLoader;
+import net.minecraft.resources.RegistryResourceAccess;
 import net.minecraft.resources.ResourceKey;
 
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
@@ -41,8 +43,8 @@ public abstract class RegistryLoaderMixin
         return result.flatMap(overrideElementFromResources).setPartial(registry);
     }
 
-    @Inject(method = "overrideElementFromResources", at = @At("RETURN"), cancellable = true)
-    private <E> void appendFileToReadAndRegisterElement(WritableRegistry<E> registry, ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec, ResourceKey<E> elementKey, DynamicOps<JsonElement> ops, CallbackInfoReturnable<DataResult<Holder<E>>> cir)
+    @Inject(method = "overrideElementFromResources(Lnet/minecraft/core/WritableRegistry;Lnet/minecraft/resources/ResourceKey;Lcom/mojang/serialization/Codec;Lnet/minecraft/resources/ResourceKey;Ljava/util/Optional;Lcom/mojang/serialization/DynamicOps;)Lcom/mojang/serialization/DataResult;", at = @At("RETURN"), cancellable = true)
+    private <E> void appendFileToReadAndRegisterElement(WritableRegistry<E> registry, ResourceKey<? extends Registry<E>> registryKey, Codec<E> elementCodec, ResourceKey<E> elementKey, Optional<RegistryResourceAccess.EntryThunk<E>> thunk, DynamicOps<JsonElement> ops, CallbackInfoReturnable<DataResult<Holder<E>>> cir)
     {
         cir.setReturnValue(MixinHooks.appendRegistryFileError(cir.getReturnValue(), ops, registryKey, elementKey.location()));
     }

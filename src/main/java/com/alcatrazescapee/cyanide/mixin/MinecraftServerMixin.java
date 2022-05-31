@@ -8,6 +8,7 @@ package com.alcatrazescapee.cyanide.mixin;
 import java.net.Proxy;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.Services;
 import net.minecraft.server.WorldStem;
 import net.minecraft.server.level.progress.ChunkProgressListenerFactory;
 import net.minecraft.server.packs.repository.PackRepository;
@@ -30,7 +31,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MinecraftServerMixin
 {
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void captureServerOnStart(Thread thread, LevelStorageSource.LevelStorageAccess levelStorageAccess, PackRepository packRepository, WorldStem worldStem, Proxy proxy, DataFixer dataFixer, MinecraftSessionService minecraftSessionService, GameProfileRepository gameProfileRepository, GameProfileCache gameProfileCache, ChunkProgressListenerFactory chunkProgressListenerFactory, CallbackInfo ci)
+    private void captureServerOnStart(Thread thread, LevelStorageSource.LevelStorageAccess levelStorageAccess, PackRepository packRepository, WorldStem worldStem, Proxy proxy, DataFixer dataFixer, Services services, ChunkProgressListenerFactory chunkProgressListenerFactory, CallbackInfo ci)
     {
         MixinHooks.setServer(MixinHooks.cast(this));
     }
