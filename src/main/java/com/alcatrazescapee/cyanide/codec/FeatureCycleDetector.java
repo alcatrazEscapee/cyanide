@@ -8,12 +8,10 @@ package com.alcatrazescapee.cyanide.codec;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.mutable.MutableInt;
 import net.minecraft.Util;
@@ -25,9 +23,7 @@ import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.*;
 
 public final class FeatureCycleDetector
 {
@@ -51,18 +47,21 @@ public final class FeatureCycleDetector
         // The second method parameter to this method is if it was called recursively / from itself or not. We ignore it entirely
         boolean calledFromTopLevel = true;
 
-        // Copied from vanilla
-        final Object2IntMap<PlacedFeature> featureToIntIdMap = new Object2IntOpenHashMap<>();
-        final MutableInt nextId = new MutableInt(0);
+        // Maps to establish identity among features and biomes
+        // We assign features and biomes ID numbers based on ==, and then create wrapper objects which respect equals() identity
+        final Reference2IntMap<PlacedFeature> featureToIntIdMap = new Reference2IntOpenHashMap<>();
+        final Reference2IntMap<Biome> biomeToIntIdMap = new Reference2IntOpenHashMap<>();
+        final MutableInt nextFeatureId = new MutableInt(0);
+        final MutableInt nextBiomeId = new MutableInt(0);
 
         // Sort by step, then by index
-        final Comparator<FeatureData> compareByStepThenByIndex = Comparator.comparingInt(FeatureData::step).thenComparingInt(FeatureData::featureIndex);
+        final Comparator<FeatureData> compareByStepThenByIndex = Comparator.comparingInt(FeatureData::step).thenComparingInt(FeatureData::featureId);
         final Map<FeatureData, Set<FeatureData>> nodesToChildren = new TreeMap<>(compareByStepThenByIndex);
 
         int maxSteps = 0;
 
         // Trace of where FeatureData's are found, in reference to biomes, indexes, and steps
-        final Map<FeatureData, Map<Biome, IntSet>> nodesToTracebacks = new IdentityHashMap<>();
+        final Map<FeatureData, Map<BiomeData, IntSet>> nodesToTracebacks = new HashMap<>();
 
         for (Holder<Biome> holder : allBiomes)
         {
@@ -85,13 +84,15 @@ public final class FeatureCycleDetector
                 for (Holder<PlacedFeature> supplier : features.get(stepIndex))
                 {
                     final PlacedFeature feature = supplier.value();
-                    final FeatureData data = new FeatureData(featureToIntIdMap.computeIfAbsent(feature, key -> nextId.getAndIncrement()), stepIndex, feature);
-                    flatDataList.add(data);
+                    final FeatureData featureIdentity = new FeatureData(idFor(feature, featureToIntIdMap, nextFeatureId), stepIndex, feature);
+                    flatDataList.add(featureIdentity);
 
                     // Track traceback biomes
+                    final BiomeData biomeIdentity = new BiomeData(idFor(biome, biomeToIntIdMap, nextBiomeId), biome);
+
                     nodesToTracebacks
-                        .computeIfAbsent(data, key -> new IdentityHashMap<>(1))
-                        .computeIfAbsent(biome, key -> new IntOpenHashSet())
+                        .computeIfAbsent(featureIdentity, key -> new HashMap<>(1))
+                        .computeIfAbsent(biomeIdentity, key -> new IntOpenHashSet())
                         .add(biomeIndex);
                     biomeIndex++;
                 }
@@ -271,7 +272,12 @@ public final class FeatureCycleDetector
         }
     }
 
-    private static String buildErrorMessage(Map<FeatureData, Map<Biome, IntSet>> tracebacks, List<FeatureData> cycle, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
+    private static <T> int idFor(T object, Reference2IntMap<T> objectToIntIdMap, MutableInt nextId)
+    {
+        return objectToIntIdMap.computeIfAbsent(object, key -> nextId.getAndIncrement());
+    }
+
+    private static String buildErrorMessage(Map<FeatureData, Map<BiomeData, IntSet>> tracebacks, List<FeatureData> cycle, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
     {
         final StringBuilder error = new StringBuilder("""
                 A feature cycle was found.
@@ -281,7 +287,7 @@ public final class FeatureCycleDetector
 
         final ListIterator<FeatureData> iterator = cycle.listIterator();
         final FeatureData start = iterator.next();
-        Map<Biome, IntSet> prevTracebacks = tracebacks.get(start);
+        Map<BiomeData, IntSet> prevTracebacks = tracebacks.get(start);
         error.append("At step ")
             .append(start.step)
             .append('\n')
@@ -292,9 +298,9 @@ public final class FeatureCycleDetector
         while (iterator.hasNext())
         {
             final FeatureData current = iterator.next();
-            final Map<Biome, IntSet> currentTracebacks = tracebacks.get(current);
+            final Map<BiomeData, IntSet> currentTracebacks = tracebacks.get(current);
             int found = 0;
-            for (Biome biome : Sets.intersection(prevTracebacks.keySet(), currentTracebacks.keySet()))
+            for (BiomeData biome : Sets.intersection(prevTracebacks.keySet(), currentTracebacks.keySet()))
             {
                 // Check if the features have a relative ordering from prev -> current, in that biome
                 final int prevTb = prevTracebacks.get(biome).intStream().min().orElseThrow();
@@ -306,7 +312,7 @@ public final class FeatureCycleDetector
                         error.append("  must be before '")
                             .append(featureName.apply(current.feature))
                             .append("' (defined in '")
-                            .append(biomeName.apply(biome))
+                            .append(biomeName.apply(biome.biome))
                             .append("' at index ")
                             .append(prevTb)
                             .append(", ")
@@ -332,15 +338,21 @@ public final class FeatureCycleDetector
     }
 
     /**
-     * @param featureIndex An integer ID mapping for the feature, NOT the index of the feature within the step
+     * @param featureId An integer ID mapping for the feature, NOT the index of the feature within the step
      * @param step The step index the feature was found in.
      * @param feature The placed feature itself
      */
-    record FeatureData(int featureIndex, int step, PlacedFeature feature) {}
+    record FeatureData(int featureId, int step, PlacedFeature feature) {}
+
+    /**
+     * @param biomeId An integer ID mapping for the biome
+     * @param biome The biome itself
+     */
+    record BiomeData(int biomeId, Biome biome) {}
 
     static class FeatureCycleException extends RuntimeException
     {
-        public FeatureCycleException(Map<FeatureData, Map<Biome, IntSet>> tracebacks, List<FeatureData> cycle, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
+        public FeatureCycleException(Map<FeatureData, Map<BiomeData, IntSet>> tracebacks, List<FeatureData> cycle, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
         {
             super(buildErrorMessage(tracebacks, cycle, biomeName, featureName));
         }
