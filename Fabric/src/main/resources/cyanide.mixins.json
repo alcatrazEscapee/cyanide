@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.alcatrazescapee.cyanide.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "accessor.BiomeAccessor",
+    "accessor.BiomeClimateSettingsAccessor"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "refmap": "cyanide.refmap.json"
+}

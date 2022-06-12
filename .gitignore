@@ -1,27 +1,21 @@
-# Reverse gitignore - explicitly include files
 *
 !*/
+
+!/.github/**/*.yml
+!/.idea/scopes/*_sources.xml
+
+!/gradle/wrapper/gradle-wrapper.jar
+!/gradle/wrapper/gradle-wrapper.properties
+
+!/**/build.gradle
+!/**/src/**/*.*
+
+!/img/**/*.png
+
 !/.gitignore
-
-!.github/**/*.yml
-!gradle/wrapper/gradle-wrapper.jar
-!gradle/wrapper/gradle-wrapper.properties
-!img/**/*.png
-!src/**
-!datapack/**/*.json
-!datapack/pack.mcmeta
-
-# Metadata
-!build.gradle
-!gradle.properties
-!settings.gradle
-!gradlew
-!gradlew.bat
-!LICENSE.txt
-!HEADER.txt
-!README.md
-
-# Other exclusions
-__pycache__/
-*.pyc
-*.pdn
+!/gradle.properties
+!/settings.gradle
+!/gradlew
+!/gradlew.bat
+!/LICENSE
+!/README.md

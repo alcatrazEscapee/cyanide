@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.alcatrazescapee.cyanide.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "accessor.BiomeGenerationSettingsAccessor",
+    "accessor.BiomeSpecialEffectsAccessor",
+    "accessor.RegistryLoaderAccessor",
+    "accessor.SinglePoolElementAccessor",
+    "BiomeMixin",
+    "FeatureSorterMixin",
+    "LootTablesMixin",
+    "RecipeManagerMixin",
+    "RegistryLoaderMixin",
+    "RegistryOpsMixin",
+    "SinglePoolElementMixin",
+    "StructureTemplatePoolMixin"
+  ],
+  "client": [
+    "client.CreateWorldScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "refmap": "cyanide.refmap.json"
+}
