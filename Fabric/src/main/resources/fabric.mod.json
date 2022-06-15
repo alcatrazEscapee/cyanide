@@ -8,7 +8,7 @@
     "${mod_author}"
   ],
   "contact": {
-    "homepage": "https://www.curseforge.com/minecraft/mc-mods/cyanide",
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/cyanide-fabric",
     "sources": "https://github.com/alcatrazEscapee/cyanide"
   },
   "license": "MIT",

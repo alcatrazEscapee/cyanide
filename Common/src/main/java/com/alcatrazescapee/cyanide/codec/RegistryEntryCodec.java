@@ -41,6 +41,7 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
     }
 
     @Override
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public <T> DataResult<Pair<Holder<E>, T>> decode(DynamicOps<T> ops, T input)
     {
         if (ops instanceof RegistryOps<T> registryOps)

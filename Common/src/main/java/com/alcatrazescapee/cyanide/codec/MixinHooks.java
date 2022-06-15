@@ -75,6 +75,7 @@ public final class MixinHooks
         ));
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static void readRegistries(RegistryAccess.Writable writable, DynamicOps<JsonElement> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData, RegistryLoader loader)
     {
         DataResult<Unit> root = DataResult.success(Unit.INSTANCE);
@@ -90,12 +91,13 @@ public final class MixinHooks
         }
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public static <E> DataResult<Unit> readRegistry(DataResult<Unit> result, RegistryLoader.Bound bound, DynamicOps<JsonElement> ops, RegistryAccess.RegistryData<E> data)
     {
-        return result.flatMap(u ->
-                bound.overrideRegistryFromResources(data.key(), data.codec(), ops)
-                    .map(e -> Unit.INSTANCE)
-                    .mapError(e -> "\n\nError(s) loading registry " + data.key().location() + ":\n" + e.replaceAll("; ", "\n")))
+        // javac is doing some very weird and fucked up things here and I don't have patience for it.
+        return result.flatMap(u -> ((DataResult<E>) bound.overrideRegistryFromResources(data.key(), data.codec(), ops))
+                .map(v -> Unit.INSTANCE)
+                .mapError(e -> "\n\nError(s) loading registry " + data.key().location() + ":\n" + e.replaceAll("; ", "\n")))
             .setPartial(Unit.INSTANCE);
     }
 

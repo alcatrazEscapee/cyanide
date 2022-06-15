@@ -3,7 +3,7 @@ name: Build + Publish
 on:
   push:
     tags:
-    - 'v*-fabric'
+    - 'v*'
 
 jobs:
   build:
@@ -44,20 +44,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.get_version.outputs.result }}-fabric
-          release_name: Cyanide 1.18.2-${{ steps.get_version.outputs.result }} (Fabric)
+          tag_name: v${{ steps.get_version.outputs.result }}
+          release_name: Cyanide 1.19-${{ steps.get_version.outputs.result }}
           body: |
             [This was an automatic build]
             // todo: add changelog
           draft: true
           prerelease: false
-      - name: Upload Main Jar
-        id: upload_main_jar
+      - name: Upload Forge Jar
+        id: upload_forge_jar
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/libs/cyanide-fabric-1.18.2-${{ steps.get_version.outputs.result }}.jar
-          asset_name: cyanide-fabric-1.18.2-${{ steps.get_version.outputs.result }}.jar
+          asset_path: ./Forge/build/libs/cyanide-forge-1.19-${{ steps.get_version.outputs.result }}.jar
+          asset_name: cyanide-forge-1.19-${{ steps.get_version.outputs.result }}.jar
+          asset_content_type: application/java-archive
+      - name: Upload Fabric Jar
+        id: upload_fabric_jar
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Fabric/build/libs/cyanide-fabric-1.19-${{ steps.get_version.outputs.result }}.jar
+          asset_name: cyanide-fabric-1.19-${{ steps.get_version.outputs.result }}.jar
           asset_content_type: application/java-archive

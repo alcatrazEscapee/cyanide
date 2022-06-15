@@ -43,3 +43,8 @@ subprojects {
         enabled = false
     }
 }
+
+task makeTestDataPack(type: Exec) {
+    workingDir "${projectDir}/datapack"
+    commandLine 'jar', '-cMf', '../example_datapack.zip', 'pack.mcmeta', 'data'
+}

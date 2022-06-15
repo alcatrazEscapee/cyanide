@@ -73,7 +73,7 @@ dependencies {
 mixin {
     add sourceSets.main, "${mod_id}.refmap.json"
 
-    config "${mod_id}.mixins.json"
+    //config "${mod_id}.mixins.json" // No Forge-only mixins to speak of
     config "${mod_id}.common.mixins.json"
 }
 
@@ -83,10 +83,6 @@ tasks.withType(JavaCompile) {
 
 processResources {
     from project(":Common").sourceSets.main.resources
-
-    filesMatching("${mod_id}.mixins.json") {
-        expand "refmap_target": "${mod_id}."
-    }
 }
 
 jar.finalizedBy('reobfJar')
