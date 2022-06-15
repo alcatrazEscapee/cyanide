@@ -30,6 +30,6 @@
     "minecraft": "1.19.x",
     "java": ">=17"
   },
-  "suggests": {}
+  "accessWidener": "cyanide.accesswidener"
 }
   
