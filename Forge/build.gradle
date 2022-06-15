@@ -23,7 +23,7 @@ apply plugin: 'org.spongepowered.mixin'
 
 def envVersion = System.getenv('VERSION')
 version = envVersion == null ? '0.0.0-indev' : envVersion
-archivesBaseName = "${mod_name}-forge-${minecraft_version}"
+archivesBaseName = "${mod_id}-forge-${minecraft_version}"
 
 minecraft {
     mappings channel: 'official', version: minecraft_version
