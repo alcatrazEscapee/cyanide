@@ -18,7 +18,6 @@
     "StructureTemplatePoolMixin"
   ],
   "client": [
-    "client.CreateWorldScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1
