@@ -1,21 +1,16 @@
 # Loader Metadata
-modLoader = "javafml" # mandatory
-loaderVersion = "[41,)" # mandatory
+modLoader = "javafml"
+loaderVersion = "[41,)"
 license = "MIT"
-issueTrackerURL = "https://github.com/alcatrazEscapee/primal-winter/issues" # optional
+issueTrackerURL = "https://github.com/alcatrazEscapee/cyanide/issues"
 
-[[mods]] # mandatory
-    modId = "cyanide" # mandatory
-    version = "${file.jarVersion}" # mandatory
-    displayName = "Cyanide" # mandatory
-    #updateJSONURL="http://myurl.me/" #optional
-    displayURL = "https://www.curseforge.com/minecraft/mc-mods/cyanide-forge" #optional
-    #logoFile="examplemod.png" #optional
-    #credits="" #optional
-    authors = "AlcatrazEscapee" #optional
-    description = '''
-        A horrible accident has left the world - the entire world - a frozen wasteland. Unending snowstorms rage across the land, from forests, to plains, to jungles, to deserts. The air is thick with fog and wind howls across the landscape. Will you be able to survive in this primordial winter?
-        '''
+[[mods]]
+    modId = "cyanide"
+    version = "${file.jarVersion}"
+    displayName = "Cyanide"
+    displayURL = "https://www.curseforge.com/minecraft/mc-mods/cyanide-forge"
+    authors = "AlcatrazEscapee"
+    description = "A mod which substantially improves Minecraft's data driven world generation error detection and recovery mechanisms."
 
 [[dependencies.cyanide]]
     modId = "forge"
