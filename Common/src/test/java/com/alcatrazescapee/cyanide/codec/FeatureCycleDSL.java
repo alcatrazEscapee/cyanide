@@ -160,12 +160,6 @@ public interface FeatureCycleDSL
         return ref;
     }
 
-    private static <T> T uncheck(Callable<T> action)
-    {
-        try { return action.call(); }
-        catch (Exception e) { throw new RuntimeException(e); }
-    }
-
     record BiomeBuilder(String id, List<FeatureBuilder> features) {}
     record FeatureBuilder(int step, String id) {}
 }
