@@ -19,8 +19,8 @@ public class FeatureCycleTest extends TestHelper implements FeatureCycleDSL
                         
             Cycle:
             At step 0
-            Feature 'duplicate'
-              must be before 'duplicate' (defined in 'biome' at index 0, 1)
+            Feature 'minecraft:duplicate'
+              must be before 'minecraft:duplicate' (defined in 'minecraft:biome' at index 0, 1)
             """
         ).expectCycleX4();
     }
@@ -40,9 +40,9 @@ public class FeatureCycleTest extends TestHelper implements FeatureCycleDSL
                             
             Cycle:
             At step 0
-            Feature 'duplicate'
-              must be before 'innocent' (defined in 'biome' at index 0, 1)
-              must be before 'duplicate' (defined in 'biome' at index 1, 2)
+            Feature 'minecraft:duplicate'
+              must be before 'minecraft:innocent' (defined in 'minecraft:biome' at index 0, 1)
+              must be before 'minecraft:duplicate' (defined in 'minecraft:biome' at index 1, 2)
             """
         ).expectCycleX4();
     }
@@ -72,11 +72,11 @@ public class FeatureCycleTest extends TestHelper implements FeatureCycleDSL
                         
             Cycle:
             At step 0
-            Feature 'target1'
-              must be before 'dummy1' (defined in 'biome1_2' at index 0, 1)
-              must be before 'target2' (defined in 'biome1_2' at index 1, 2)
-              must be before 'dummy2' (defined in 'biome2_1' at index 0, 1)
-              must be before 'target1' (defined in 'biome2_1' at index 1, 2)
+            Feature 'minecraft:target1'
+              must be before 'minecraft:dummy1' (defined in 'minecraft:biome1_2' at index 0, 1)
+              must be before 'minecraft:target2' (defined in 'minecraft:biome1_2' at index 1, 2)
+              must be before 'minecraft:dummy2' (defined in 'minecraft:biome2_1' at index 0, 1)
+              must be before 'minecraft:target1' (defined in 'minecraft:biome2_1' at index 1, 2)
             """
         ).expectCycleX4();
     }
@@ -88,22 +88,22 @@ public class FeatureCycleTest extends TestHelper implements FeatureCycleDSL
             biome("biome_1",
                 feature(0, "dummy1"),
                 feature(0, "dummy2"),
-                feature(0, "firstIndex2"),
-                feature(0, "secondIndex1")
+                feature(0, "first_index2"),
+                feature(0, "second_index1")
             ),
             biome("biome_2",
                 feature(0, "dummy1"),
                 feature(0, "dummy2"),
-                feature(0, "secondIndex2"),
-                feature(0, "firstIndex1")
+                feature(0, "second_index2"),
+                feature(0, "first_index1")
             ),
             biome("biome_3",
-                feature(0, "firstIndex1"),
-                feature(0, "firstIndex2")
+                feature(0, "first_index1"),
+                feature(0, "first_index2")
             ),
             biome("biome_4",
-                feature(0, "secondIndex1"),
-                feature(0, "secondIndex2")
+                feature(0, "second_index1"),
+                feature(0, "second_index2")
             )
         ).error(
             """
@@ -111,11 +111,11 @@ public class FeatureCycleTest extends TestHelper implements FeatureCycleDSL
                             
             Cycle:
             At step 0
-            Feature 'firstIndex2'
-              must be before 'secondIndex1' (defined in 'biome_1' at index 2, 3)
-              must be before 'secondIndex2' (defined in 'biome_4' at index 0, 1)
-              must be before 'firstIndex1' (defined in 'biome_2' at index 2, 3)
-              must be before 'firstIndex2' (defined in 'biome_3' at index 0, 1)
+            Feature 'minecraft:first_index2'
+              must be before 'minecraft:second_index1' (defined in 'minecraft:biome_1' at index 2, 3)
+              must be before 'minecraft:second_index2' (defined in 'minecraft:biome_4' at index 0, 1)
+              must be before 'minecraft:first_index1' (defined in 'minecraft:biome_2' at index 2, 3)
+              must be before 'minecraft:first_index2' (defined in 'minecraft:biome_3' at index 0, 1)
             """
         ).expectCycleX4();
     }

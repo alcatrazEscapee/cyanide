@@ -1,9 +1,14 @@
 package com.alcatrazescapee.cyanide.codec;
 
+import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import org.apache.commons.lang3.mutable.MutableInt;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.*;
@@ -93,10 +98,10 @@ public interface FeatureCycleDSL
             final Map<String, Holder<PlacedFeature>> featureMap = new HashMap<>();
             final List<Holder<Biome>> biomes = this.biomes.stream()
                 .map(biome -> biomeMap.computeIfAbsent(biome.id, biomeKey ->
-                    createBiome(idCounter, builder ->
+                    createBiome(biome.id, idCounter, builder ->
                         biome.features.forEach(feature ->
                             builder.addFeature(feature.step, featureMap.computeIfAbsent(feature.id, featureKey ->
-                                createFeature(idCounter, useIdentityEqualFeatures)))))))
+                                createFeature(feature.id, idCounter, useIdentityEqualFeatures)))))))
                 .toList();
             final Map<Object, String> idMap = new IdentityHashMap<>();
             biomeMap.forEach((id, biome) -> idMap.put(biome.value(), id));
@@ -105,16 +110,16 @@ public interface FeatureCycleDSL
             return this;
         }
 
-        private Holder<PlacedFeature> createFeature(MutableInt idCounter, boolean useIdentityEqualFeatures)
+        private Holder<PlacedFeature> createFeature(String id, MutableInt idCounter, boolean useIdentityEqualFeatures)
         {
             final ConfiguredFeature<?, ?> feature = useIdentityEqualFeatures ?
                 new ConfiguredFeature<>(Feature.NO_OP, NoneFeatureConfiguration.INSTANCE) :
                 new ConfiguredFeature<>(Feature.SEA_PICKLE, new CountConfiguration(idCounter.getAndIncrement()));
             final PlacedFeature placed = new PlacedFeature(Holder.direct(feature), new ArrayList<>());
-            return Holder.direct(placed);
+            return reference(id, placed, Registry.PLACED_FEATURE_REGISTRY);
         }
 
-        private Holder<Biome> createBiome(MutableInt idCounter, Consumer<BiomeGenerationSettings.Builder> features)
+        private Holder<Biome> createBiome(String id, MutableInt idCounter, Consumer<BiomeGenerationSettings.Builder> features)
         {
             final BiomeGenerationSettings.Builder builder = new BiomeGenerationSettings.Builder();
             features.accept(builder);
@@ -134,8 +139,31 @@ public interface FeatureCycleDSL
                     .build())
                 .generationSettings(builder.build())
                 .build();
-            return Holder.direct(biome);
+            return reference(id, biome, Registry.BIOME_REGISTRY);
         }
+    }
+
+    private static <T> Holder<T> reference(String id, T value, ResourceKey<? extends Registry<T>> registry)
+    {
+        @SuppressWarnings("ConstantConditions")
+        final Holder.Reference<T> ref = Holder.Reference.createStandAlone(null, ResourceKey.create(registry, new ResourceLocation(id)));
+        try
+        {
+            final Field field = Holder.Reference.class.getDeclaredField("value");
+            field.setAccessible(true);
+            field.set(ref, value);
+        }
+        catch (NoSuchFieldException | IllegalAccessException e)
+        {
+            throw new RuntimeException(e);
+        }
+        return ref;
+    }
+
+    private static <T> T uncheck(Callable<T> action)
+    {
+        try { return action.call(); }
+        catch (Exception e) { throw new RuntimeException(e); }
     }
 
     record BiomeBuilder(String id, List<FeatureBuilder> features) {}
