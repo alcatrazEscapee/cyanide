@@ -10,6 +10,7 @@ import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
+import com.alcatrazescapee.cyanide.codec.FeatureCycleDetector;
 import com.alcatrazescapee.cyanide.codec.MixinHooks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -25,6 +26,6 @@ public abstract class FeatureSorterMixin
     @Inject(method = "buildFeaturesPerStep", at = @At("HEAD"), cancellable = true)
     private static <T> void buildFeaturesPerStepWithAdvancedCycleDetection(List<T> biomes, Function<T, List<HolderSet<PlacedFeature>>> biomeFeatures, boolean topLevel, CallbackInfoReturnable<List<FeatureSorter.StepFeatureData>> cir)
     {
-        cir.setReturnValue(MixinHooks.buildFeaturesPerStepAndPopulateErrors(MixinHooks.cast(biomes), MixinHooks.cast(biomeFeatures)));
+        cir.setReturnValue(FeatureCycleDetector.buildFeaturesPerStep(MixinHooks.cast(biomes), MixinHooks.cast(biomeFeatures)));
     }
 }

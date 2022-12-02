@@ -1,38 +1,28 @@
 subprojects {
-    
-    apply plugin: 'java'
+
+    apply plugin: "java"
 
     java.toolchain.languageVersion = JavaLanguageVersion.of(17)
     java.withSourcesJar()
-    java.withJavadocJar()
-        
+
     jar {
         manifest {
             attributes([
-                'Specification-Title'     : mod_name,
-                'Specification-Vendor'    : mod_author,
-                'Specification-Version'   : project.jar.archiveVersion,
-                'Implementation-Title'    : project.name,
-                'Implementation-Version'  : project.jar.archiveVersion,
-                'Implementation-Vendor'   : mod_author,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                'Timestamp'               : System.currentTimeMillis(),
-                'Built-On-Java'           : "${System.getProperty('java.vm.version')} (${System.getProperty('java.vm.vendor')})",
-                'Build-On-Minecraft'      : minecraft_version
+                    "Implementation-Version": project.jar.archiveVersion
             ])
         }
     }
-    
+
     repositories {
         mavenCentral()
         maven {
-            name = 'Sponge / Mixin'
-            url = 'https://repo.spongepowered.org/repository/maven-public/'
+            name = "Sponge"
+            url = "https://repo.spongepowered.org/repository/maven-public/"
         }
     }
 
     tasks.withType(JavaCompile).configureEach {
-        it.options.encoding = 'UTF-8'
+        it.options.encoding = "UTF-8"
         it.options.release = 17
     }
 
@@ -44,7 +34,16 @@ subprojects {
     }
 }
 
-task makeTestDataPack(type: Exec) {
-    workingDir "${projectDir}/datapack"
-    commandLine 'jar', '-cMf', '../example_datapack.zip', 'pack.mcmeta', 'data'
+task makeAllDataPacks(type: GradleBuild) {
+    tasks = ["makeErrorsAsDatapack", "makeFeatureCycleAsDataPack"]
+}
+
+task makeErrorsAsDatapack(type: Exec) {
+    workingDir("${projectDir}/tests/errors_as_datapack")
+    commandLine("jar", "-cMf", "../errors_as_datapack.zip", "pack.mcmeta", "data")
+}
+
+task makeFeatureCycleAsDataPack(type: Exec) {
+    workingDir("${projectDir}/tests/feature_cycle_as_datapack")
+    commandLine("jar", "-cMf", "../feature_cycle_as_datapack.zip", "pack.mcmeta", "data")
 }

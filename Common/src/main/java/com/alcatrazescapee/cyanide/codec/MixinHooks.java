@@ -1,6 +1,6 @@
 package com.alcatrazescapee.cyanide.codec;
 
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -19,7 +19,6 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.sounds.Music;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.util.Unit;
 import net.minecraft.world.level.biome.*;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
@@ -51,20 +50,6 @@ public final class MixinHooks
     private static final Logger LOGGER = LogUtils.getLogger();
     private static @Nullable Codec<Holder<StructureProcessorList>> STRUCTURE_PROCESSOR_LIST_CODEC;
 
-    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStepAndPopulateErrors(List<Holder<Biome>> allBiomes, Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures)
-    {
-        // This is delayed enough (as the underlying function is made lazy), so we can just retrieve the registry access from the server
-        final MinecraftServer server = XPlatform.INSTANCE.getServer();
-        if (server != null)
-        {
-            final RegistryAccess registryAccess = server.registryAccess();
-            final Registry<Biome> biomeRegistry = registryAccess.registryOrThrow(Registry.BIOME_REGISTRY);
-            final Registry<PlacedFeature> placedFeatureRegistry = registryAccess.registryOrThrow(Registry.PLACED_FEATURE_REGISTRY);
-            return FeatureCycleDetector.buildFeaturesPerStep(allBiomes, biomeFeatures, b -> idFor(biomeRegistry, b), f -> idFor(placedFeatureRegistry, f));
-        }
-        return FeatureCycleDetector.buildFeaturesPerStep(allBiomes, biomeFeatures);
-    }
-
     public static WorldGenSettings printWorldGenSettingsError(DataResult<WorldGenSettings> result)
     {
         return result.getOrThrow(false, err -> LOGGER.error(
@@ -75,30 +60,27 @@ public final class MixinHooks
         ));
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("rawtypes")
     public static void readRegistries(RegistryAccess.Writable writable, DynamicOps<JsonElement> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData, RegistryLoader loader)
     {
-        DataResult<Unit> root = DataResult.success(Unit.INSTANCE);
-
+        final List<String> errors = new ArrayList<>();
         final RegistryLoader.Bound bound = loader.bind(writable);
         for (RegistryAccess.RegistryData<?> data : registryData.values())
         {
-            root = readRegistry(root, bound, ops, data);
+            readRegistry(errors, bound, ops, data);
         }
-        if (root.error().isPresent())
+        if (!errors.isEmpty())
         {
-            throw new JsonParseException("Error(s) loading registries:" + root.error().get().message().replaceAll("\n; ", "\n") + "\n\n");
+            throw new JsonParseException("Error(s) loading registries:" + String.join("\n", errors) + "\n\n");
         }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static <E> DataResult<Unit> readRegistry(DataResult<Unit> result, RegistryLoader.Bound bound, DynamicOps<JsonElement> ops, RegistryAccess.RegistryData<E> data)
+    public static <E> void readRegistry(List<String> errors, RegistryLoader.Bound bound, DynamicOps<JsonElement> ops, RegistryAccess.RegistryData<E> data)
     {
-        // javac is doing some very weird and fucked up things here and I don't have patience for it.
-        return result.flatMap(u -> ((DataResult<E>) bound.overrideRegistryFromResources(data.key(), data.codec(), ops))
-                .map(v -> Unit.INSTANCE)
-                .mapError(e -> "\n\nError(s) loading registry " + data.key().location() + ":\n" + e.replaceAll("; ", "\n")))
-            .setPartial(Unit.INSTANCE);
+        ((DataResult<E>) bound.overrideRegistryFromResources(data.key(), data.codec(), ops))
+            .error()
+            .ifPresent(e -> errors.add("\n\nError(s) loading registry " + data.key().location() + ":\n" + e.message().replaceAll("; ", "\n")));
     }
 
     public static <E> DataResult<E> appendRegistryError(DataResult<E> result, ResourceKey<? extends Registry<?>> registry)
@@ -117,6 +99,7 @@ public final class MixinHooks
         return appendRegistryEntrySourceError(result, ops, registry, id);
     }
 
+    @SuppressWarnings("rawtypes")
     public static <E> DataResult<E> appendRegistryEntrySourceError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registryKey, ResourceLocation resourceLocation)
     {
         return result.mapError(error -> {

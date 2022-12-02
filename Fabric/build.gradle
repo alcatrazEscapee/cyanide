@@ -1,22 +1,25 @@
 plugins {
-    id 'fabric-loom' version '0.11-SNAPSHOT'
-    id 'io.github.juuxel.loom-quiltflower' version '1.7.2'
-    id 'idea'
+    id "idea"
+    id "fabric-loom" version "0.12-SNAPSHOT"
+    id "io.github.juuxel.loom-quiltflower" version "1.7.2"
 }
 
 
-def envVersion = System.getenv('VERSION')
-version = envVersion == null ? '0.0.0-indev' : envVersion
+def envVersion = System.getenv("VERSION")
+version = envVersion == null ? "0.0.0-indev" : envVersion
 archivesBaseName = "${mod_id}-fabric-${minecraft_version}"
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    mappings loom.officialMojangMappings()
+    mappings loom.layered() {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${minecraft_version}:${parchment_version}@zip")
+    }
 
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
 
     implementation project(":Common")
-    implementation 'org.jetbrains:annotations:23.0.0'
+    implementation "org.jetbrains:annotations:23.0.0"
 }
 
 loom {

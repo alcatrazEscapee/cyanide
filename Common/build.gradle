@@ -1,6 +1,6 @@
 plugins {
-    id 'java'
-    id 'org.spongepowered.gradle.vanilla' version '0.2.1-SNAPSHOT'
+    id "java"
+    id "org.spongepowered.gradle.vanilla" version "0.2.1-SNAPSHOT"
 }
 
 minecraft {
@@ -8,14 +8,14 @@ minecraft {
 }
 
 dependencies {
-    compileOnly group: 'org.spongepowered', name:'mixin', version:'0.8.5'
+    compileOnly group: "org.spongepowered", name: "mixin", version: "0.8.5"
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
 }
 
 processResources {
-    filesMatching(['pack.mcmeta']) {
+    filesMatching(["pack.mcmeta"]) {
         expand project.properties
     }
 }

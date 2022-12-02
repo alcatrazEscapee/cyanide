@@ -13,7 +13,6 @@ import net.minecraft.Util;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
@@ -23,22 +22,14 @@ import it.unimi.dsi.fastutil.objects.*;
 
 public final class FeatureCycleDetector
 {
-    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes, Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures)
-    {
-        return buildFeaturesPerStep(allBiomes, biomeFeatures, biome -> "???", feature -> "???");
-    }
-
     /**
      * A modified version of {@link FeatureSorter#buildFeaturesPerStep(List, Function, boolean)} with several improvements, in order to properly report errors.
      * Added comments, removed vanilla's slow as heck "try this again by removing biomes until it doesn't break" detector and replace with one that is able to track the detected cycle during the DFS.
      *
-     * @param biomeName A function to name biomes in error messages
-     * @param featureName A function to name features in error messages
-     *
      * @throws FeatureCycleException if a feature was detected.
      */
     @SuppressWarnings("ConstantConditions")
-    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes, Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
+    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes, Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures)
     {
         // The second method parameter to this method is if it was called recursively / from itself or not. We ignore it entirely
         boolean calledFromTopLevel = true;
@@ -59,7 +50,7 @@ public final class FeatureCycleDetector
         // Trace of where FeatureData's are found, in reference to biomes, indexes, and steps
         final Map<FeatureData, Map<BiomeData, IntSet>> nodesToTracebacks = new HashMap<>();
 
-        for (Holder<Biome> holder : allBiomes)
+        for (Holder<Biome> biomeHolder : allBiomes)
         {
             // Loop through all biomes
             // For each biome, we ultimately compute the maxSteps - the maximum number of generation steps of any biome
@@ -68,23 +59,23 @@ public final class FeatureCycleDetector
             // At the end, once we've computed this list, we then have that F1, F2, ... Fn, where Fj must come before Fi if j < i
             // So, we represent that as a graph F1 -> F2 -> ... -> Fn
 
-            final Biome biome = holder.value();
+            final Biome biome = biomeHolder.value();
             final List<FeatureData> flatDataList = new ArrayList<>();
-            final List<HolderSet<PlacedFeature>> features = biomeFeatures.apply(holder);
+            final List<HolderSet<PlacedFeature>> features = biomeFeatures.apply(biomeHolder);
 
             maxSteps = Math.max(maxSteps, features.size());
 
             for (int stepIndex = 0; stepIndex < features.size(); ++stepIndex)
             {
                 int biomeIndex = 0;
-                for (Holder<PlacedFeature> supplier : features.get(stepIndex))
+                for (Holder<PlacedFeature> featureHolder : features.get(stepIndex))
                 {
-                    final PlacedFeature feature = supplier.value();
-                    final FeatureData featureIdentity = new FeatureData(idFor(feature, featureToIntIdMap, nextFeatureId), stepIndex, feature);
+                    final PlacedFeature feature = featureHolder.value();
+                    final FeatureData featureIdentity = new FeatureData(idFor(feature, featureToIntIdMap, nextFeatureId), stepIndex, feature, featureHolder);
                     flatDataList.add(featureIdentity);
 
                     // Track traceback biomes
-                    final BiomeData biomeIdentity = new BiomeData(idFor(biome, biomeToIntIdMap, nextBiomeId), biome);
+                    final BiomeData biomeIdentity = new BiomeData(idFor(biome, biomeToIntIdMap, nextBiomeId), biome, biomeHolder);
 
                     nodesToTracebacks
                         .computeIfAbsent(featureIdentity, key -> new HashMap<>(1))
@@ -147,7 +138,7 @@ public final class FeatureCycleDetector
 
                 // At this point, we have enough information to throw a custom exception, with the biomes and features involved
                 // if (true) here, as we keep the below code since it's from vanilla, but it is never executed
-                if (true) throw new FeatureCycleException(nodesToTracebacks, featureCycle, biomeName, featureName);
+                if (true) throw new FeatureCycleException(nodesToTracebacks, featureCycle);
 
                 // A cycle has been found from the DFS
                 if (!calledFromTopLevel)
@@ -177,7 +168,7 @@ public final class FeatureCycleDetector
                             // Then, we try and build features again, but without this biome
                             // If this passes, we include the biome again below.
                             // If it fails, the boolean above means that the "false" will just immediately throw an exception
-                            buildFeaturesPerStep(biomeSubset, biomeFeatures, biomeName, featureName);
+                            buildFeaturesPerStep(biomeSubset, biomeFeatures);
                         }
                         catch (IllegalStateException e)
                         {
@@ -273,7 +264,7 @@ public final class FeatureCycleDetector
         return objectToIntIdMap.computeIfAbsent(object, key -> nextId.getAndIncrement());
     }
 
-    private static String buildErrorMessage(Map<FeatureData, Map<BiomeData, IntSet>> tracebacks, List<FeatureData> cycle, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
+    private static String buildErrorMessage(Map<FeatureData, Map<BiomeData, IntSet>> tracebacks, List<FeatureData> cycle)
     {
         final StringBuilder error = new StringBuilder("""
                 A feature cycle was found.
@@ -288,7 +279,7 @@ public final class FeatureCycleDetector
             .append(start.step)
             .append('\n')
             .append("Feature '")
-            .append(featureName.apply(start.feature))
+            .append(start.name())
             .append("'\n");
 
         while (iterator.hasNext())
@@ -306,9 +297,9 @@ public final class FeatureCycleDetector
                     if (found == 0)
                     {
                         error.append("  must be before '")
-                            .append(featureName.apply(current.feature))
+                            .append(current.name())
                             .append("' (defined in '")
-                            .append(biomeName.apply(biome.biome))
+                            .append(biome.name())
                             .append("' at index ")
                             .append(prevTb)
                             .append(", ")
@@ -338,19 +329,37 @@ public final class FeatureCycleDetector
      * @param step The step index the feature was found in.
      * @param feature The placed feature itself
      */
-    record FeatureData(int featureId, int step, PlacedFeature feature) {}
+    record FeatureData(int featureId, int step, PlacedFeature feature, Holder<PlacedFeature> source)
+    {
+        String name()
+        {
+            return source.unwrap().map(
+                e -> e.location().toString(),
+                e -> "[Inline feature: " + feature + "]"
+            );
+        }
+    }
 
     /**
      * @param biomeId An integer ID mapping for the biome
      * @param biome The biome itself
      */
-    record BiomeData(int biomeId, Biome biome) {}
+    record BiomeData(int biomeId, Biome biome, Holder<Biome> source)
+    {
+        String name()
+        {
+            return source.unwrap().map(
+                e -> e.location().toString(),
+                e -> "[Inline biome: " + biome + "]"
+            );
+        }
+    }
 
     static class FeatureCycleException extends RuntimeException
     {
-        public FeatureCycleException(Map<FeatureData, Map<BiomeData, IntSet>> tracebacks, List<FeatureData> cycle, Function<Biome, String> biomeName, Function<PlacedFeature, String> featureName)
+        public FeatureCycleException(Map<FeatureData, Map<BiomeData, IntSet>> tracebacks, List<FeatureData> cycle)
         {
-            super(buildErrorMessage(tracebacks, cycle, biomeName, featureName));
+            super(buildErrorMessage(tracebacks, cycle));
         }
     }
 }

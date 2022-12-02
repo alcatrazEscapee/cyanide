@@ -56,7 +56,7 @@ public interface FeatureCycleDSL
         TestBuilder expectCycle()
         {
             return run((biomes, idMap) -> {
-                final FeatureCycleDetector.FeatureCycleException err = assertThrows(FeatureCycleDetector.FeatureCycleException.class, () -> FeatureCycleDetector.buildFeaturesPerStep(biomes, b -> b.value().getGenerationSettings().features(), idMap::get, idMap::get));
+                final FeatureCycleDetector.FeatureCycleException err = assertThrows(FeatureCycleDetector.FeatureCycleException.class, () -> FeatureCycleDetector.buildFeaturesPerStep(biomes, b -> b.value().getGenerationSettings().features()));
                 assertEquals(error, err.getMessage());
             });
         }
@@ -68,7 +68,7 @@ public interface FeatureCycleDSL
 
         TestBuilder expectNoCycle()
         {
-            return run((biomes, idMap) -> assertDoesNotThrow(() -> FeatureCycleDetector.buildFeaturesPerStep(biomes, b -> b.value().getGenerationSettings().features(), idMap::get, idMap::get)));
+            return run((biomes, idMap) -> assertDoesNotThrow(() -> FeatureCycleDetector.buildFeaturesPerStep(biomes, b -> b.value().getGenerationSettings().features())));
         }
 
         TestBuilder expectNoCycleInVanilla()
