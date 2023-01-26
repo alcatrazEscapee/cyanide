@@ -14,7 +14,7 @@ import com.alcatrazescapee.cyanide.codec.MixinHooks;
 public abstract class CreateWorldScreenMixin
 {
     @Dynamic("Lambda method in private void tryApplyNewDataPacks(PackRepository)")
-    @Redirect(method = {"method_40209(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/world/level/DataPackConfig;)Lcom/mojang/datafixers/util/Pair;"}, at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/DataResult;getOrThrow(ZLjava/util/function/Consumer;)Ljava/lang/Object;", remap = false))
+    @Redirect(method = "method_45678(Lnet/minecraft/server/WorldLoader$DataLoadContext;)Lnet/minecraft/server/WorldLoader$DataLoadOutput;", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/DataResult;getOrThrow(ZLjava/util/function/Consumer;)Ljava/lang/Object;", remap = false))
     private <E> E resultOrPartialWithImprovedErrorMessages(DataResult<E> result, boolean allowPartial, Consumer<String> onError)
     {
         return MixinHooks.cast(MixinHooks.printWorldGenSettingsError(MixinHooks.cast(result)));

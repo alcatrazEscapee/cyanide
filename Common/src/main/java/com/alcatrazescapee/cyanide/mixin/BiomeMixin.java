@@ -2,6 +2,7 @@ package com.alcatrazescapee.cyanide.mixin;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.biome.Biome;
 
 import com.alcatrazescapee.cyanide.codec.Codecs;
@@ -21,6 +22,6 @@ public abstract class BiomeMixin
     static
     {
         DIRECT_CODEC = MixinHooks.makeBiomeCodec();
-        CODEC = Codecs.registryEntryCodec(Registry.BIOME_REGISTRY, DIRECT_CODEC);
+        CODEC = Codecs.registryEntryCodec(Registries.BIOME, DIRECT_CODEC);
     }
 }

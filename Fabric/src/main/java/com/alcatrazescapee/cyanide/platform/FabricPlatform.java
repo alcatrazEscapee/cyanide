@@ -18,20 +18,6 @@ import com.alcatrazescapee.cyanide.mixin.accessor.BiomeClimateSettingsAccessor;
 
 public final class FabricPlatform implements XPlatform
 {
-    private static @Nullable MinecraftServer SERVER = null;
-
-    public static void setServer(MinecraftServer server)
-    {
-        SERVER = server;
-    }
-
-    @Nullable
-    @Override
-    public MinecraftServer getServer()
-    {
-        return SERVER;
-    }
-
     @Override
     public Codec<Biome> makeBiomeCodec(Codec<BiomeSpecialEffects> specialEffectsCodec, Codec<PlacedFeature> placedFeatureCodec, MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec)
     {

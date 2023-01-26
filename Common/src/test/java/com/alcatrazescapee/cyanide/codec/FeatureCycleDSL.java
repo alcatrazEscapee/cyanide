@@ -6,9 +6,13 @@ import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import org.apache.commons.lang3.mutable.MutableInt;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.*;
@@ -116,12 +120,12 @@ public interface FeatureCycleDSL
                 new ConfiguredFeature<>(Feature.NO_OP, NoneFeatureConfiguration.INSTANCE) :
                 new ConfiguredFeature<>(Feature.SEA_PICKLE, new CountConfiguration(idCounter.getAndIncrement()));
             final PlacedFeature placed = new PlacedFeature(Holder.direct(feature), new ArrayList<>());
-            return reference(id, placed, Registry.PLACED_FEATURE_REGISTRY);
+            return reference(id, placed, Registries.PLACED_FEATURE);
         }
 
         private Holder<Biome> createBiome(String id, MutableInt idCounter, Consumer<BiomeGenerationSettings.Builder> features)
         {
-            final BiomeGenerationSettings.Builder builder = new BiomeGenerationSettings.Builder();
+            final BiomeGenerationSettings.Builder builder = new BiomeGenerationSettings.Builder(new NoopHolderGetter<>(), new NoopHolderGetter<>());
             features.accept(builder);
             final Biome biome = new Biome.BiomeBuilder()
                 .precipitation(Biome.Precipitation.NONE)
@@ -139,7 +143,7 @@ public interface FeatureCycleDSL
                     .build())
                 .generationSettings(builder.build())
                 .build();
-            return reference(id, biome, Registry.BIOME_REGISTRY);
+            return reference(id, biome, Registries.BIOME);
         }
     }
 
@@ -162,4 +166,19 @@ public interface FeatureCycleDSL
 
     record BiomeBuilder(String id, List<FeatureBuilder> features) {}
     record FeatureBuilder(int step, String id) {}
+
+    record NoopHolderGetter<T>() implements HolderGetter<T>
+    {
+        @Override
+        public Optional<Holder.Reference<T>> get(ResourceKey<T> resourceKey)
+        {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<HolderSet.Named<T>> get(TagKey<T> tagKey)
+        {
+            return Optional.empty();
+        }
+    }
 }

@@ -21,8 +21,5 @@ public interface XPlatform
             .orElseThrow(() -> new NullPointerException("Failed to load service for " + clazz.getName()));
     }
 
-    @Nullable
-    MinecraftServer getServer();
-
     Codec<Biome> makeBiomeCodec(Codec<BiomeSpecialEffects> specialEffectsCodec, Codec<PlacedFeature> placedFeatureCodec, MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec);
 }

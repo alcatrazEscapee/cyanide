@@ -6,14 +6,12 @@
   "mixins": [
     "accessor.BiomeGenerationSettingsAccessor",
     "accessor.BiomeSpecialEffectsAccessor",
-    "accessor.RegistryLoaderAccessor",
     "accessor.SinglePoolElementAccessor",
     "BiomeMixin",
     "FeatureSorterMixin",
     "LootTablesMixin",
     "RecipeManagerMixin",
-    "RegistryLoaderMixin",
-    "RegistryOpsMixin",
+    "RegistryDataLoaderMixin",
     "SinglePoolElementMixin",
     "StructureTemplatePoolMixin"
   ],

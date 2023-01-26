@@ -16,13 +16,6 @@ import com.alcatrazescapee.cyanide.codec.Codecs;
 
 public final class ForgePlatform implements XPlatform
 {
-    @Nullable
-    @Override
-    public MinecraftServer getServer()
-    {
-        return ServerLifecycleHooks.getCurrentServer();
-    }
-
     @Override
     public Codec<Biome> makeBiomeCodec(Codec<BiomeSpecialEffects> specialEffectsCodec, Codec<PlacedFeature> placedFeatureCodec, MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec)
     {

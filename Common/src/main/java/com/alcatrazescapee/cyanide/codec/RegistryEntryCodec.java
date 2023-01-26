@@ -3,6 +3,8 @@ package com.alcatrazescapee.cyanide.codec;
 import java.util.Optional;
 
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderOwner;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.*;
 
@@ -22,11 +24,11 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
     {
         if (ops instanceof RegistryOps<T> registryOps)
         {
-            final Optional<? extends Registry<E>> optionalRegistry = registryOps.registry(registryKey);
-            if (optionalRegistry.isPresent())
+            final Optional<HolderOwner<E>> optionalOwner = registryOps.owner(registryKey);
+            if (optionalOwner.isPresent())
             {
-                final Registry<E> registry = optionalRegistry.get();
-                if (!input.isValidInRegistry(registry))
+                final HolderOwner<E> owner = optionalOwner.get();
+                if (!input.canSerializeIn(owner))
                 {
                     return DataResult.error("Element - " + input + " - not valid in current registry " + registryKey.location());
                 }
@@ -41,17 +43,17 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
     }
 
     @Override
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public <T> DataResult<Pair<Holder<E>, T>> decode(DynamicOps<T> ops, T input)
     {
         if (ops instanceof RegistryOps<T> registryOps)
         {
-            final Optional<? extends Registry<E>> optionalRegistry = registryOps.registry(registryKey);
-            if (optionalRegistry.isEmpty())
+            final Optional<HolderGetter<E>> optionalGetter = registryOps.getter(registryKey);
+            if (optionalGetter.isEmpty())
             {
                 return DataResult.error("Unknown registry " + registryKey);
             }
 
+            final HolderGetter<E> getter = optionalGetter.get();
             final DataResult<Pair<ResourceLocation, T>> optionalResult = ResourceLocation.CODEC.decode(ops, input);
             if (optionalResult.result().isPresent())
             {
@@ -59,27 +61,14 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
                 final ResourceLocation id = result.getFirst();
                 final ResourceKey<E> key = ResourceKey.create(registryKey, id);
 
-                final Optional<RegistryLoader.Bound> loader = registryOps.registryLoader();
-                if (loader.isPresent())
-                {
-                    DataResult<Holder<E>> decoded = loader.get().overrideElementFromResources(registryKey, elementCodec, key, registryOps.getAsJson());
-                    if (decoded.error().isPresent())
-                    {
-                        decoded = MixinHooks.appendRegistryReferenceError(decoded, id, registryKey);
-                    }
-                    return decoded.map(value -> Pair.of(value, result.getSecond()));
-                }
-                else
-                {
-                    return optionalRegistry.get()
-                        .getOrCreateHolder(key)
-                        .map(holder -> Pair.of(holder, result.getSecond()))
-                        .setLifecycle(Lifecycle.stable());
-                }
+                return getter.get(key)
+                    .map(DataResult::success)
+                    .orElseGet(() -> MixinHooks.appendRegistryReferenceError(DataResult.error("Missing " + registryKey.location().getPath() + ": " + key.location()), id, registryKey))
+                    .<Pair<Holder<E>, T>>map(reference -> Pair.of(reference, result.getSecond()))
+                    .setLifecycle(Lifecycle.stable());
             }
         }
-        DataResult<Pair<Holder<E>, T>> result = elementCodec.decode(ops, input)
-            .map(r -> r.mapFirst(Holder::direct));
+        DataResult<Pair<Holder<E>, T>> result = elementCodec.decode(ops, input).map(r -> r.mapFirst(Holder::direct));
         if (result.error().isPresent())
         {
             result = MixinHooks.appendRegistryError(result, registryKey);

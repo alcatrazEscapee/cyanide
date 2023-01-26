@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderOwner;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.RegistryOps;
@@ -62,12 +64,11 @@ public final class RegistryListCodec<E> implements Codec<HolderSet<E>>
     {
         if (ops instanceof RegistryOps<T> registryOps)
         {
-            final Optional<? extends Registry<E>> optionalRegistry = registryOps.registry(registryKey);
-            if (optionalRegistry.isPresent())
+            final Optional<HolderGetter<E>> optionalGetter = registryOps.getter(registryKey);
+            if (optionalGetter.isPresent())
             {
-                final Registry<E> registry = optionalRegistry.get();
-                return registryAwareTagOrListCodec.decode(ops, input)
-                    .map(pair -> pair.mapFirst(either -> either.map(registry::getOrCreateTag, HolderSet::direct)));
+                final HolderGetter<E> getter = optionalGetter.get();
+                return registryAwareTagOrListCodec.decode(ops, input).map(pair -> pair.mapFirst(either -> either.map(getter::getOrThrow, HolderSet::direct)));
             }
         }
         return decodeWithoutRegistry(ops, input);
@@ -78,14 +79,14 @@ public final class RegistryListCodec<E> implements Codec<HolderSet<E>>
     {
         if (ops instanceof RegistryOps<T> registryOps)
         {
-            Optional<? extends Registry<E>> optionalRegistry = registryOps.registry(registryKey);
-            if (optionalRegistry.isPresent())
+            final Optional<HolderOwner<E>> optionalOwner = registryOps.owner(registryKey);
+            if (optionalOwner.isPresent())
             {
-                if (!input.isValidInRegistry(optionalRegistry.get()))
+                if (!input.canSerializeIn(optionalOwner.get()))
                 {
                     return DataResult.error("HolderSet " + input + " is not valid in current registry set");
                 }
-                return registryAwareTagOrListCodec.encode(input.unwrap().mapRight(List::copyOf), ops, prefix);
+                return this.registryAwareTagOrListCodec.encode(input.unwrap().mapRight(List::copyOf), ops, prefix);
             }
         }
         return encodeWithoutRegistry(input, ops, prefix);

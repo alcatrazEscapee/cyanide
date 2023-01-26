@@ -1,19 +1,28 @@
 package com.alcatrazescapee.cyanide.codec;
 
+import java.io.Reader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.WritableRegistry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.*;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.sounds.Music;
@@ -60,27 +69,130 @@ public final class MixinHooks
         ));
     }
 
-    @SuppressWarnings("rawtypes")
-    public static void readRegistries(RegistryAccess.Writable writable, DynamicOps<JsonElement> ops, Map<ResourceKey<? extends Registry<?>>, RegistryAccess.RegistryData<?>> registryData, RegistryLoader loader)
+    record RegistryDataPair<R>(RegistryDataLoader.RegistryData<R> data, MappedRegistry<R> registry)
     {
-        final List<String> errors = new ArrayList<>();
-        final RegistryLoader.Bound bound = loader.bind(writable);
-        for (RegistryAccess.RegistryData<?> data : registryData.values())
+        static <R> RegistryDataPair<R> create(RegistryDataLoader.RegistryData<R> data)
         {
-            readRegistry(errors, bound, ops, data);
-        }
-        if (!errors.isEmpty())
-        {
-            throw new JsonParseException("Error(s) loading registries:" + String.join("\n", errors) + "\n\n");
+            return new RegistryDataPair<>(data, new MappedRegistry<>(data.key(), Lifecycle.stable()));
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public static <E> void readRegistry(List<String> errors, RegistryLoader.Bound bound, DynamicOps<JsonElement> ops, RegistryAccess.RegistryData<E> data)
+    /**
+     * Replacement for {@link RegistryDataLoader#load(ResourceManager, RegistryAccess, List)}
+     * While Mojang improved this logic in 1.19.3, they still create unnecessary stack traces, don't manage to catch all errors, and bury actual informative error messages.
+     * This tosses pretty much everything, and rewrites the entire process.
+     */
+    public static RegistryAccess.Frozen loadAllRegistryData(ResourceManager resourceManager, RegistryAccess registryAccess, List<RegistryDataLoader.RegistryData<?>> registryData)
     {
-        ((DataResult<E>) bound.overrideRegistryFromResources(data.key(), data.codec(), ops))
-            .error()
-            .ifPresent(e -> errors.add("\n\nError(s) loading registry " + data.key().location() + ":\n" + e.message().replaceAll("; ", "\n")));
+        final List<? extends RegistryDataPair<?>> registryPairs = registryData.stream().map(RegistryDataPair::create).toList();
+        final Map<ResourceKey<? extends Registry<?>>, RegistryOps.RegistryInfo<?>> registryInfo = new HashMap<>();
+
+        registryAccess.registries().forEach(registryEntry -> registryInfo.put(registryEntry.key(), createImmutableRegistryInfo(registryEntry.value())));
+        registryPairs.forEach(pair -> registryInfo.put(pair.registry().key(), createMutableRegistryInfo(pair.registry())));
+
+        final RegistryOps.RegistryInfoLookup registryInfoLookup = new RegistryOps.RegistryInfoLookup() {
+            @Override
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            public <T> Optional<RegistryOps.RegistryInfo<T>> lookup(ResourceKey<? extends Registry<? extends T>> resourceKey)
+            {
+                return Optional.ofNullable((RegistryOps.RegistryInfo) registryInfo.get(resourceKey));
+            }
+        };
+
+        final List<String> errors = new ArrayList<>();
+        for (RegistryDataPair<?> pair : registryPairs)
+        {
+            loadRegistryData(resourceManager, registryInfoLookup, pair, errors);
+        }
+
+        boolean anyFreezeErrors = false;
+        for (RegistryDataPair<?> pair : registryPairs)
+        {
+            try
+            {
+                pair.registry().freeze();
+            }
+            catch (IllegalStateException e)
+            {
+                if (!anyFreezeErrors)
+                {
+                    anyFreezeErrors = true;
+                    errors.add("\n\nErrors occurred freezing registries.\nThese were elements that were referenced, but never defined (or their definition had an error above).\n\n");
+                }
+
+                final String unboundElementPrefix = "Unbound values in registry " + pair.registry.key() + ": [";
+                if (e.getMessage().startsWith(unboundElementPrefix))
+                {
+                    errors.add("Missing references from the " + pair.registry.key().location().getPath() + " registry: [\n\t'" + e.getMessage().substring(unboundElementPrefix.length(), e.getMessage().length() - 1).replaceAll(", ", "',\n\t'") + "'\n]\n\n");
+                }
+                else
+                {
+                    errors.add(e.getMessage());
+                }
+            }
+        }
+
+        if (!errors.isEmpty())
+        {
+            throw new IllegalStateException("Error(s) loading registries:\n" + String.join("", errors));
+        }
+
+        return new RegistryAccess.ImmutableRegistryAccess(registryPairs.stream().map(RegistryDataPair::registry).toList()).freeze();
+    }
+
+    private static <R> void loadRegistryData(ResourceManager resourceManager, RegistryOps.RegistryInfoLookup registryInfoLookup, RegistryDataPair<R> pair, List<String> errors)
+    {
+        final ResourceKey<? extends Registry<R>> registryKey = pair.data.key();
+
+        final String registryName = registryKey.location().getPath();
+        final FileToIdConverter fileToIdConverter = FileToIdConverter.json(registryName);
+        final RegistryOps<JsonElement> registryOps = RegistryOps.create(JsonOps.INSTANCE, registryInfoLookup);
+
+        final List<String> errorsInRegistry = new ArrayList<>();
+
+        for (Map.Entry<ResourceLocation, Resource> entry : fileToIdConverter.listMatchingResources(resourceManager).entrySet())
+        {
+            final ResourceLocation entryId = entry.getKey();
+            final ResourceKey<R> entryKey = ResourceKey.create(registryKey, fileToIdConverter.fileToId(entryId));
+            final Resource entryResource = entry.getValue();
+
+            try
+            {
+                final Reader reader = entryResource.openAsReader();
+                final JsonElement json = JsonParser.parseReader(reader);
+                final DataResult<R> dataResult = pair.data().elementCodec().parse(registryOps, json);
+
+                dataResult.result().ifPresent(result -> pair.registry().register(entryKey, result, entryResource.isBuiltin() ? Lifecycle.stable() : dataResult.lifecycle()));
+                dataResult.error().ifPresent(error -> errorsInRegistry.add(
+                    appendErrorLocation(appendErrorLocation(error.message(), registryName + " '" + entryId + "'"), "pack '" + entryResource.sourcePackId() + "'")));
+            }
+            catch (Exception e)
+            {
+                errorsInRegistry.add(appendErrorLocation(appendErrorLocation("External error occurred: " + e.getMessage(), registryName + " '" + entryId + "'"), "pack '" + entryResource.sourcePackId() + "'"));
+            }
+        }
+
+        if (!errorsInRegistry.isEmpty())
+        {
+            final StringBuilder builder = new StringBuilder("\n\nErrors(s) loading registry ")
+                .append(registryKey.location())
+                .append(":\n\n");
+            for (String error : errorsInRegistry)
+            {
+                builder.append(ensureNewLineSuffix(error.replaceAll("; ", "\n")));
+            }
+            errors.add(builder.toString());
+        }
+    }
+
+    private static <T> RegistryOps.RegistryInfo<T> createMutableRegistryInfo(WritableRegistry<T> registry)
+    {
+        return new RegistryOps.RegistryInfo<>(registry.asLookup(), registry.createRegistrationLookup(), registry.registryLifecycle());
+    }
+
+    private static <T> RegistryOps.RegistryInfo<T> createImmutableRegistryInfo(Registry<T> registry)
+    {
+        return new RegistryOps.RegistryInfo<>(registry.asLookup(), registry.asTagAddingLookup(), registry.registryLifecycle());
     }
 
     public static <E> DataResult<E> appendRegistryError(DataResult<E> result, ResourceKey<? extends Registry<?>> registry)
@@ -91,33 +203,6 @@ public final class MixinHooks
     public static <E> DataResult<E> appendRegistryReferenceError(DataResult<E> result, ResourceLocation id, ResourceKey<? extends Registry<?>> registry)
     {
         return result.mapError(e -> appendErrorLocation(e, "reference to \"" + id + "\" from " + registry.location()));
-    }
-
-    public static <E> DataResult<E> appendRegistryFileError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registry, ResourceLocation id)
-    {
-        result = result.mapError(e -> appendErrorLocation(e, "file \"" + registryFile(registry, id) + '"'));
-        return appendRegistryEntrySourceError(result, ops, registry, id);
-    }
-
-    @SuppressWarnings("rawtypes")
-    public static <E> DataResult<E> appendRegistryEntrySourceError(DataResult<E> result, DynamicOps<JsonElement> ops, ResourceKey<? extends Registry<?>> registryKey, ResourceLocation resourceLocation)
-    {
-        return result.mapError(error -> {
-            if (ops instanceof RegistryOps<JsonElement> registryOps && registryOps.registryLoader().isPresent())
-            {
-                final RegistryLoader.Bound bound = registryOps.registryLoader().get();
-                final RegistryResourceAccess resourceAccess = ((RegistryLoaderAccessor) bound.loader()).accessor$getResources();
-                if (resourceAccess instanceof ResourceAccessWrapper wrapper)
-                {
-                    final @Nullable Resource resource = wrapper.manager().getResource(registryFileLocation(registryKey, resourceLocation)).orElse(null);
-                    if (resource != null)
-                    {
-                        return appendErrorLocation(error, "data pack " + resource.sourcePackId());
-                    }
-                }
-            }
-            return error;
-        });
     }
 
     public static Codec<Biome> makeBiomeCodec()
@@ -146,7 +231,7 @@ public final class MixinHooks
             Codecs.reporting(ConfiguredFeature.CODEC.fieldOf("feature"), "feature").forGetter(PlacedFeature::feature),
             Codecs.reporting(Codecs.list(PlacementModifier.CODEC).fieldOf("placement"), "placement").forGetter(PlacedFeature::placement)
         ).apply(instance, PlacedFeature::new));
-        final Codec<HolderSet<PlacedFeature>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registry.PLACED_FEATURE_REGISTRY, placedFeatureCodec);
+        final Codec<HolderSet<PlacedFeature>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registries.PLACED_FEATURE, placedFeatureCodec);
 
         // Remove promotePartial calls, as logging at this level is pointless since we don't have a file or a registry name
         // Use much improved codecs for Codecs.list(), registry codecs
@@ -177,11 +262,6 @@ public final class MixinHooks
     {
         // Use improved structure processor list codec and add a reporting field to 'processors'
         return Codecs.reporting(structureProcessorListCodec().fieldOf("processors"), "processors").forGetter(e -> ((SinglePoolElementAccessor) e).cyanide$getProcessors());
-    }
-
-    public static RegistryResourceAccess wrapResourceAccess(ResourceManager manager)
-    {
-        return new ResourceAccessWrapper(RegistryResourceAccess.forResourceManager(manager), manager);
     }
 
     public static void cleanLootTableError(Logger logger, String message, Object p0, Object p1)
@@ -221,24 +301,9 @@ public final class MixinHooks
                 ShapedCodec.likeMap(listObjectCodec.fieldOf("processors").codec()),
                 ShapedCodec.likeList(listObjectCodec)
             ).xmap(e -> e.map(Function.identity(), Function.identity()), Either::left);
-            STRUCTURE_PROCESSOR_LIST_CODEC = Codecs.registryEntryCodec(Registry.PROCESSOR_LIST_REGISTRY, directCodec);
+            STRUCTURE_PROCESSOR_LIST_CODEC = Codecs.registryEntryCodec(Registries.PROCESSOR_LIST, directCodec);
         }
         return STRUCTURE_PROCESSOR_LIST_CODEC;
-    }
-
-    private static String registryFile(ResourceKey<? extends Registry<?>> registry, ResourceLocation resource)
-    {
-        final ResourceLocation file = registryFileLocation(registry, resource);
-        return "data/" + file.getNamespace() + "/" + file.getPath();
-    }
-
-    /**
-     * Mirrors the logic used in {@link net.minecraft.resources.RegistryResourceAccess#forResourceManager(ResourceManager)} for {@code parseElement()}.
-     * Used to refer to a registry and element pair by its datapack defined file location.
-     */
-    private static ResourceLocation registryFileLocation(ResourceKey<? extends Registry<?>> registry, ResourceLocation resource)
-    {
-        return new ResourceLocation(resource.getNamespace(), registry.location().getPath() + "/" + resource.getPath() + ".json");
     }
 
     private static String ensureNewLineSuffix(String s)

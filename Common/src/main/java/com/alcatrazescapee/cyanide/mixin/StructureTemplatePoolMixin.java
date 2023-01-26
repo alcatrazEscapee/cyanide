@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 
@@ -23,7 +24,7 @@ public abstract class StructureTemplatePoolMixin
 
     static
     {
-        CODEC = Codecs.registryEntryCodec(Registry.TEMPLATE_POOL_REGISTRY, DIRECT_CODEC);
+        CODEC = Codecs.registryEntryCodec(Registries.TEMPLATE_POOL, DIRECT_CODEC);
     }
 
     @Dynamic("lambda method in <cinit>")

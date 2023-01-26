@@ -2,6 +2,7 @@ package com.alcatrazescapee.cyanide.mixin.accessor;
 
 import java.util.Optional;
 
+import net.minecraft.core.Holder;
 import net.minecraft.sounds.Music;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.level.biome.AmbientAdditionsSettings;
@@ -16,7 +17,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface BiomeSpecialEffectsAccessor
 {
     @Invoker("<init>")
-    static BiomeSpecialEffects cyanide$new(int fogColor, int waterColor, int waterFogColor, int skyColor, Optional<Integer> foliageColorOverride_, Optional<Integer> grassColorOverride, BiomeSpecialEffects.GrassColorModifier grassColorModifier, Optional<AmbientParticleSettings> ambientParticleSettings, Optional<SoundEvent> ambientLoopSoundEvent, Optional<AmbientMoodSettings> ambientMoodSettings, Optional<AmbientAdditionsSettings> ambientAdditionsSettings, Optional<Music> backgroundMusic)
+    static BiomeSpecialEffects cyanide$new(int fogColor, int waterColor, int waterFogColor, int skyColor, Optional<Integer> foliageColorOverride_, Optional<Integer> grassColorOverride, BiomeSpecialEffects.GrassColorModifier grassColorModifier, Optional<AmbientParticleSettings> ambientParticleSettings, Optional<Holder<SoundEvent>> ambientLoopSoundEvent, Optional<AmbientMoodSettings> ambientMoodSettings, Optional<AmbientAdditionsSettings> ambientAdditionsSettings, Optional<Music> backgroundMusic)
     {
         throw new AssertionError();
     }
