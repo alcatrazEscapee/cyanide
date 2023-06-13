@@ -8,6 +8,7 @@
     "accessor.BiomeClimateSettingsAccessor"
   ],
   "client": [
+    "client.CreateWorldScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

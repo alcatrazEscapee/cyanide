@@ -128,7 +128,7 @@ public interface FeatureCycleDSL
             final BiomeGenerationSettings.Builder builder = new BiomeGenerationSettings.Builder(new NoopHolderGetter<>(), new NoopHolderGetter<>());
             features.accept(builder);
             final Biome biome = new Biome.BiomeBuilder()
-                .precipitation(Biome.Precipitation.NONE)
+                .hasPrecipitation(false)
                 .temperature(idCounter.getAndIncrement())
                 .downfall(0)
                 .specialEffects(

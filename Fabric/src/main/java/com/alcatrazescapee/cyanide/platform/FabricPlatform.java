@@ -24,7 +24,7 @@ public final class FabricPlatform implements XPlatform
         // Use improved .optionalFieldOf for temperature modifier, and use an improved enum codec for it.
         // Add Codecs.reporting() to some fields.
         final MapCodec<Biome.ClimateSettings> climateSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codecs.reporting(Codecs.fromEnum("precipitation", Biome.Precipitation::values).fieldOf("precipitation"), "precipitation").forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getPrecipitation()),
+            Codecs.reporting(Codec.BOOL.fieldOf("has_precipitation"), "precipitation").forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getHasPrecipitation()),
             Codecs.reporting(Codec.FLOAT.fieldOf("temperature"), "temperature").forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getTemperature()),
             Codecs.optionalFieldOf(Codecs.fromEnum("temperature modifier", Biome.TemperatureModifier::values), "temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getTemperatureModifier()),
             Codecs.reporting(Codec.FLOAT.fieldOf("downfall"), "downfall").forGetter(c -> MixinHooks.<BiomeClimateSettingsAccessor>cast(c).cyanide$getDownfall())

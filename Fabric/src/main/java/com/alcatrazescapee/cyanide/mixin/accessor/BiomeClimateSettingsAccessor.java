@@ -10,13 +10,13 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface BiomeClimateSettingsAccessor
 {
     @Invoker("<init>")
-    static Biome.ClimateSettings cyanide$new(Biome.Precipitation precipitation, float temperature, Biome.TemperatureModifier temperatureModifier, float downfall)
+    static Biome.ClimateSettings cyanide$new(boolean hasPrecipitation, float temperature, Biome.TemperatureModifier temperatureModifier, float downfall)
     {
         throw new AssertionError();
     }
 
-    @Accessor("precipitation")
-    Biome.Precipitation cyanide$getPrecipitation();
+    @Accessor("hasPrecipitation")
+    boolean cyanide$getHasPrecipitation();
 
     @Accessor("temperature")
     float cyanide$getTemperature();

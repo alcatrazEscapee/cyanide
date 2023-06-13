@@ -30,7 +30,7 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
                 final HolderOwner<E> owner = optionalOwner.get();
                 if (!input.canSerializeIn(owner))
                 {
-                    return DataResult.error("Element - " + input + " - not valid in current registry " + registryKey.location());
+                    return DataResult.error(() -> "Element - " + input + " - not valid in current registry " + registryKey.location());
                 }
 
                 return input.unwrap().map(
@@ -50,7 +50,7 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
             final Optional<HolderGetter<E>> optionalGetter = registryOps.getter(registryKey);
             if (optionalGetter.isEmpty())
             {
-                return DataResult.error("Unknown registry " + registryKey);
+                return DataResult.error(() -> "Unknown registry " + registryKey);
             }
 
             final HolderGetter<E> getter = optionalGetter.get();
@@ -63,7 +63,7 @@ public record RegistryEntryCodec<E>(ResourceKey<? extends Registry<E>> registryK
 
                 return getter.get(key)
                     .map(DataResult::success)
-                    .orElseGet(() -> MixinHooks.appendRegistryReferenceError(DataResult.error("Missing " + registryKey.location().getPath() + ": " + key.location()), id, registryKey))
+                    .orElseGet(() -> MixinHooks.appendRegistryReferenceError(DataResult.error(() -> "Missing " + registryKey.location().getPath() + ": " + key.location()), id, registryKey))
                     .<Pair<Holder<E>, T>>map(reference -> Pair.of(reference, result.getSecond()))
                     .setLifecycle(Lifecycle.stable());
             }

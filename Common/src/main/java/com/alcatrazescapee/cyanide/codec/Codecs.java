@@ -96,10 +96,10 @@ public final class Codecs
             Codec.STRING.flatXmap(
                 name -> Optional.ofNullable(nameResolver.get().apply(name))
                     .map(DataResult::success)
-                    .orElseGet(() -> DataResult.error("Unknown " + id + " name: " + name + ", expected one of [" + Arrays.stream(values.get()).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]")),
+                    .orElseGet(() -> DataResult.error(() -> "Unknown " + id + " name: " + name + ", expected one of [" + Arrays.stream(values.get()).map(StringRepresentable::getSerializedName).collect(Collectors.joining(", ")) + "]")),
                 value -> Optional.of(value.getSerializedName())
                     .map(DataResult::success)
-                    .orElseGet(() -> DataResult.error("Unknown name for " + id + ": " + value))),
+                    .orElseGet(() -> DataResult.error(() -> "Unknown name for " + id + ": " + value))),
             ExtraCodecs.idResolverCodec(Enum::ordinal, index -> index >= 0 && index < values.get().length ? values.get()[index] : null, -1)
         );
     }

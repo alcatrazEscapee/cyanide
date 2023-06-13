@@ -16,7 +16,7 @@ public class DataResultPartialResultCarryTest
         DataResult<Unit> result = DataResult.success(Unit.INSTANCE);
         for (String key : new String[] {"first", "second", "third"})
         {
-            result = result.flatMap(r -> DataResult.error(key + " not found").map(u -> r));
+            result = result.flatMap(r -> DataResult.error(() -> key + " not found").map(u -> r));
         }
 
         assertTrue(result.error().isPresent());
@@ -29,7 +29,7 @@ public class DataResultPartialResultCarryTest
         DataResult<Unit> result = DataResult.success(Unit.INSTANCE);
         for (String key : new String[] {"first", "second", "third"})
         {
-            result = result.flatMap(r -> DataResult.error(key + " not found").map(u -> r)).setPartial(Unit.INSTANCE);
+            result = result.flatMap(r -> DataResult.error(() -> key + " not found").map(u -> r)).setPartial(Unit.INSTANCE);
         }
 
         assertTrue(result.error().isPresent());

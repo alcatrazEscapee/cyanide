@@ -1,27 +1,27 @@
 # Loader Metadata
 modLoader = "javafml"
-loaderVersion = "[44,)"
+loaderVersion = "${forgeVersionRange}"
 license = "MIT"
-issueTrackerURL = "https://github.com/alcatrazEscapee/cyanide/issues"
+issueTrackerURL = "${modIssueUrl}"
 
 [[mods]]
-    modId = "cyanide"
-    version = "${file.jarVersion}"
-    displayName = "Cyanide"
-    displayURL = "https://www.curseforge.com/minecraft/mc-mods/cyanide-forge"
-    authors = "AlcatrazEscapee"
-    description = "A mod which substantially improves Minecraft's data driven world generation error detection and recovery mechanisms."
+    modId = "${modId}"
+    version = "${modVersion}"
+    displayName = "${modName}"
+    displayURL = "${modHomeUrl}"
+    authors = "${modAuthor}"
+    description = "${modDescription}"
 
-[[dependencies.cyanide]]
+[[dependencies.${modId}]]
     modId = "forge"
     mandatory = true
-    versionRange = "[44,)"
+    versionRange = "${forgeVersionRange}"
     ordering = "NONE"
     side = "BOTH"
 
-[[dependencies.cyanide]]
+[[dependencies.${modId}]]
     modId = "minecraft"
     mandatory = true
-    versionRange = "[1.19.3,)"
+    versionRange = "${minecraftVersionRange}"
     ordering = "NONE"
     side = "BOTH"

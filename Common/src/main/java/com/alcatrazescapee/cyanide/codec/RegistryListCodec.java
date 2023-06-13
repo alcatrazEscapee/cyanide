@@ -53,7 +53,7 @@ public final class RegistryListCodec<E> implements Codec<HolderSet<E>>
                 {
                     return DataResult.success(direct);
                 }
-                return DataResult.error("Can't decode element " + holder + " without registry present");
+                return DataResult.error(() -> "Can't decode element " + holder + " without registry present");
             },
             holder -> holder
         ));
@@ -84,7 +84,7 @@ public final class RegistryListCodec<E> implements Codec<HolderSet<E>>
             {
                 if (!input.canSerializeIn(optionalOwner.get()))
                 {
-                    return DataResult.error("HolderSet " + input + " is not valid in current registry set");
+                    return DataResult.error(() -> "HolderSet " + input + " is not valid in current registry set");
                 }
                 return this.registryAwareTagOrListCodec.encode(input.unwrap().mapRight(List::copyOf), ops, prefix);
             }

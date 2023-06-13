@@ -21,7 +21,7 @@ public final class ForgePlatform implements XPlatform
     {
         // Forge AT's ClimateSettings for us
         final MapCodec<Biome.ClimateSettings> climateSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codecs.reporting(Codecs.fromEnum("precipitation", Biome.Precipitation::values).fieldOf("precipitation"), "precipitation").forGetter(Biome.ClimateSettings::precipitation),
+            Codecs.reporting(Codec.BOOL.fieldOf("has_precipitation"), "has_precipitation").forGetter(Biome.ClimateSettings::hasPrecipitation),
             Codecs.reporting(Codec.FLOAT.fieldOf("temperature"), "temperature").forGetter(Biome.ClimateSettings::temperature),
             Codecs.optionalFieldOf(Codecs.fromEnum("temperature modifier", Biome.TemperatureModifier::values), "temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(Biome.ClimateSettings::temperatureModifier),
             Codecs.reporting(Codec.FLOAT.fieldOf("downfall"), "downfall").forGetter(Biome.ClimateSettings::downfall)
@@ -42,7 +42,7 @@ public final class ForgePlatform implements XPlatform
             .downfall(climateSettings.downfall())
             .temperature(climateSettings.temperature())
             .temperatureAdjustment(climateSettings.temperatureModifier())
-            .precipitation(climateSettings.precipitation())
+            .hasPrecipitation(climateSettings.hasPrecipitation())
             .specialEffects(specialEffects)
             .generationSettings(generationSettings)
             .mobSpawnSettings(mobSpawnSettings)

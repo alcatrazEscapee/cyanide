@@ -1,34 +1,32 @@
 {
   "schemaVersion": 1,
-  "id": "${mod_id}",
-  "version": "${version}",
-  "name": "${mod_name}",
+  "id": "${modId}",
+  "version": "${modVersion}",
+  "name": "${modName}",
   "description": "A mod which substantially improves Minecraft's data driven world generation error detection and recovery mechanisms.",
   "authors": [
-    "${mod_author}"
+    "${modAuthor}"
   ],
   "contact": {
-    "homepage": "https://www.curseforge.com/minecraft/mc-mods/cyanide-fabric",
-    "sources": "https://github.com/alcatrazEscapee/cyanide"
+    "homepage": "${modHomeUrl}",
+    "sources": "${modSourceUrl}",
+    "issues": "${modIssueUrl}"
   },
   "license": "MIT",
-  "icon": "assets/modid/icon.png",
+  "icon": "assets/${modId}/icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": [
-      "com.alcatrazescapee.cyanide.FabricCyanide"
-    ],
-    "client": [
-    ]
+    "main": [],
+    "client": []
   },
   "mixins": [
     "cyanide.mixins.json",
     "cyanide.common.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.14",
-    "minecraft": ">=1.19.3",
-    "java": ">=17"
+    "fabricloader": ">=${fabricLoaderVersion}",
+    "minecraft": ">=${minecraftVersion}",
+    "java": ">=${modJavaVersion}"
   },
   "accessWidener": "cyanide.accesswidener"
 }

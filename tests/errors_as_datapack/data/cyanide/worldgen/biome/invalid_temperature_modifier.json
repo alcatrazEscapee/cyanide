@@ -94,7 +94,7 @@
     "misc": []
   },
   "spawn_costs": {},
-  "precipitation": "none",
+  "has_precipitation": true,
   "temperature_modifier": "peachy",
   "temperature": 0.5,
   "downfall": 0.5,
