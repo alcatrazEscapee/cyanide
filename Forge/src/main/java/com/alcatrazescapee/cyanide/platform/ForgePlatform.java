@@ -1,21 +1,34 @@
 package com.alcatrazescapee.cyanide.platform;
 
+import com.google.gson.JsonElement;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.server.MinecraftServer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeSpecialEffects;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-import net.minecraftforge.server.ServerLifecycleHooks;
-import org.jetbrains.annotations.Nullable;
+import net.minecraftforge.common.ForgeHooks;
+import net.minecraftforge.common.crafting.conditions.ICondition;
 
 import com.alcatrazescapee.cyanide.codec.Codecs;
 
 public final class ForgePlatform implements XPlatform
 {
+    @Override
+    public String registryDirPath(ResourceLocation registryKey)
+    {
+        return ForgeHooks.prefixNamespace(registryKey);
+    }
+
+    @Override
+    public boolean shouldRegisterEntry(JsonElement json)
+    {
+        return ICondition.shouldRegisterEntry(json);
+    }
+
     @Override
     public Codec<Biome> makeBiomeCodec(Codec<BiomeSpecialEffects> specialEffectsCodec, Codec<PlacedFeature> placedFeatureCodec, MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec)
     {

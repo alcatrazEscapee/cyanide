@@ -10,9 +10,8 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
-import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.Decoder;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.Holder;
@@ -46,7 +45,6 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import org.jetbrains.annotations.NotNull;
@@ -140,11 +138,13 @@ public final class MixinHooks
         return new RegistryAccess.ImmutableRegistryAccess(registryPairs.stream().map(RegistryDataPair::registry).toList()).freeze();
     }
 
+    /**
+     * From {@link RegistryDataLoader#loadRegistryContents(RegistryOps.RegistryInfoLookup, ResourceManager, ResourceKey, WritableRegistry, Decoder, Map)}
+     */
     private static <R> void loadRegistryData(ResourceManager resourceManager, RegistryOps.RegistryInfoLookup registryInfoLookup, RegistryDataPair<R> pair, List<String> errors)
     {
         final ResourceKey<? extends Registry<R>> registryKey = pair.data.key();
-
-        final String registryName = registryKey.location().getPath();
+        final String registryName = XPlatform.INSTANCE.registryDirPath(registryKey.location());
         final FileToIdConverter fileToIdConverter = FileToIdConverter.json(registryName);
         final RegistryOps<JsonElement> registryOps = RegistryOps.create(JsonOps.INSTANCE, registryInfoLookup);
 
@@ -161,6 +161,9 @@ public final class MixinHooks
                 final Reader reader = entryResource.openAsReader();
                 final JsonElement json = JsonParser.parseReader(reader);
                 final DataResult<R> dataResult = pair.data().elementCodec().parse(registryOps, json);
+
+                // Mirror the Forge patch in RegistryDataLoader
+                if (!XPlatform.INSTANCE.shouldRegisterEntry(json)) continue;
 
                 dataResult.result().ifPresent(result -> pair.registry().register(entryKey, result, entryResource.isBuiltin() ? Lifecycle.stable() : dataResult.lifecycle()));
                 dataResult.error().ifPresent(error -> errorsInRegistry.add(
@@ -319,12 +322,5 @@ public final class MixinHooks
             return;
         }
         logger.error(fallbackMessage, possibleId, possibleError); // Fallback
-    }
-
-    private static <T> String idFor(Registry<T> registry, T element)
-    {
-        return registry.getResourceKey(element)
-            .map(e -> e.location().toString())
-            .orElseGet(() -> "[Unknown " + registry.key().location() + ']');
     }
 }

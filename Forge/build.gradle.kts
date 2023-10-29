@@ -28,6 +28,7 @@ repositories {
         }
 
     exclusiveMaven("https://maven.parchmentmc.org") { includeGroupByRegex("org\\.parchmentmc.*") }
+    maven(url = "https://cursemaven.com")
 }
 
 dependencies {
@@ -38,6 +39,10 @@ dependencies {
     if (System.getProperty("idea.sync.active") != "true") {
         annotationProcessor(group = "org.spongepowered", name = "mixin", version = "0.8.5", classifier = "processor")
     }
+
+    //implementation(fg.deobf("curse.maven:mekanism-268560:4807067")) // Cyanide#20
+    //implementation(fg.deobf("curse.maven:citadel-331936:4813387")) // Cyanide#22
+    //implementation(fg.deobf("curse.maven:alexs-mobs-426558:4745999"))
 }
 
 minecraft {
