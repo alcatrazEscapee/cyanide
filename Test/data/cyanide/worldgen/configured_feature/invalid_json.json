@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:no_op",
+  "config" {
+    "key": "value"
+  }
+}

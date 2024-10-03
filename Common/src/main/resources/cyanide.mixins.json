@@ -4,12 +4,13 @@
   "package": "com.alcatrazescapee.cyanide.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "accessor.MappedRegistryAccessor",
-    "accessor.RegistryDataLoaderAccessor",
     "FeatureSorterMixin",
-    "RegistryDataLoaderMixin"
+    "RegistryDataLoaderMixin",
+    "accessor.MappedRegistryAccessor",
+    "accessor.RegistryDataLoaderAccessor"
   ],
   "client": [
+    "client.CreateWorldScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1
