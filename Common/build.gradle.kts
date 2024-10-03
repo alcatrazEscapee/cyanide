@@ -1,31 +1,22 @@
-// Later versions of vanillagradle are broken without newer versions of gradle
-// This is pinned to a version that works, since for the rest of 1.20.1 lifecycle, we're not expecting to update this, or gradle
-// In 1.21 this will move to MDG instead
-buildscript {
-    dependencies.add("classpath", "org.spongepowered:vanillagradle:0.2.1-20230929.005621-65")
-}
-
 plugins {
-    java
-    id("org.spongepowered.gradle.vanilla") version "0.2.1-20230929.005621-65"
+    id("net.neoforged.moddev") version "0.1.112"
 }
 
-// From gradle.properties
-val minecraftVersion: String by extra
-
-minecraft {
-    version(minecraftVersion)
-}
+val parchmentMinecraftVersion: String by extra
+val parchmentVersion: String by extra
+val modNeoFormVersion: String by extra
 
 dependencies {
     compileOnly(group = "org.spongepowered", name = "mixin", version = "0.8.5")
-
-    testImplementation(group = "org.junit.jupiter", name = "junit-jupiter-api", version = "5.8.2")
-    testRuntimeOnly(group = "org.junit.jupiter", name = "junit-jupiter-engine", version = "5.8.2")
+    compileOnly(group = "io.github.llamalad7", name = "mixinextras-common", version = "0.3.5")
+    annotationProcessor(group = "io.github.llamalad7", name = "mixinextras-common", version = "0.3.5")
 }
 
-tasks {
-    test {
-        useJUnitPlatform()
+neoForge {
+    neoFormVersion.set(modNeoFormVersion)
+
+    parchment {
+        minecraftVersion.set(parchmentMinecraftVersion)
+        mappingsVersion.set(parchmentVersion)
     }
 }

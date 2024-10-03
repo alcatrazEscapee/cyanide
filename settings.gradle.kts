@@ -1,34 +1,24 @@
 pluginManagement {
     repositories {
-        fun exclusiveMaven(url: String, filter: Action<InclusiveRepositoryContentDescriptor>) =
-            exclusiveContent {
-                forRepository { maven(url) }
-                filter(filter)
-            }
-
-        exclusiveMaven("https://maven.minecraftforge.net") {
-            includeGroupByRegex("net\\.minecraftforge.*")
-        }
-        exclusiveMaven("https://maven.parchmentmc.org") {
-            includeGroupByRegex("org\\.parchmentmc.*")
-        }
-        exclusiveMaven("https://maven.fabricmc.net/") {
-            includeGroup("net.fabricmc")
-            includeGroup("fabric-loom")
-        }
-        exclusiveMaven("https://repo.spongepowered.org/repository/maven-public/") {
-            includeGroupByRegex("org\\.spongepowered.*")
-        }
         gradlePluginPortal()
-    }
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "org.spongepowered.mixin") {
-                useModule("org.spongepowered:mixingradle:${requested.version}")
+        mavenCentral()
+        exclusiveContent {
+            forRepository { maven("https://maven.fabricmc.net") }
+            filter {
+                includeGroup("net.fabricmc")
+                includeGroup("fabric-loom")
             }
+        }
+        exclusiveContent {
+            forRepository { maven("https://maven.neoforged.net/releases") }
+            filter { includeGroupAndSubgroups("net.neoforged") }
         }
     }
 }
 
-rootProject.name = "Cyanide-1.20"
-include("Common", "Fabric", "Forge")
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+}
+
+rootProject.name = "Cyanide-1.21"
+include("Common", "Fabric", "NeoForge")

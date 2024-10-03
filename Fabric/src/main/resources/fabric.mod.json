@@ -3,7 +3,7 @@
   "id": "${modId}",
   "version": "${modVersion}",
   "name": "${modName}",
-  "description": "A mod which substantially improves Minecraft's data driven world generation error detection and recovery mechanisms.",
+  "description": "${modDescription}",
   "authors": [
     "${modAuthor}"
   ],
@@ -21,7 +21,7 @@
   },
   "mixins": [
     "cyanide.mixins.json",
-    "cyanide.common.mixins.json"
+    "cyanide.fabric.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${fabricLoaderVersion}",
