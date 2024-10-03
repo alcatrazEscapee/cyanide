@@ -10,13 +10,13 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class CreateWorldScreenMixin
 {
     @Redirect(
-        method = {
+        method =
 #if PLATFORM_FABRIC
-            "method_49629*"
+            "method_49629(Ljava/util/function/Consumer;Ljava/lang/Void;Ljava/lang/Throwable;)Ljava/lang/Object;"
 #else
-            "lambda$applyNewPackConfig$17*",
+            "lambda$applyNewPackConfig$17*"
 #endif
-        },
+        ,
         at = @At(
             value = "INVOKE",
             target = "Lorg/slf4j/Logger;warn(Ljava/lang/String;Ljava/lang/Throwable;)V",

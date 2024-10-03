@@ -4,77 +4,11 @@
 
 *cyanide seems to be something that will make me want to drink cyanide a lot less - Starmute, world generation datapack wizard.*
 
-A mod which substantially improves Minecraft's data driven world generation error detection and recovery mechanisms. For example, consider the following fairly common error in Vanilla:
+A mod which substantially improves Minecraft's data driven world generation error detection and recovery mechanisms. It removes unnecessary stack traces and generates user-friendly error messages for most common issues with world generation datapacks. For some examples of what improvements Cyanide makes to error reporting, see the below table:
 
-```
-Feature: Not a JSON object: "minecraft:disk_gravel"; Not a JSON object: "minecraft:disk_clay"; Not a JSON object: "minecraft:disk_sand"; Not a JSON object: "minecraft:ore_copper"; Not a JSON object: "minecraft:ore_lapis"; Not a JSON object: "minecraft:ore_diamond"; Not a JSON object: "minecraft:ore_redstone"; Not a JSON object: "minecraft:ore_gold"; Not a JSON object: "minecraft:ore_iron"; Not a JSON object: "minecraft:ore_coal"; Not a JSON object: "cyanide:broken_disk_gravel"; Not a JSON object: "minecraft:ore_deepslate"; Not a JSON object: "minecraft:ore_tuff"; Not a JSON object: "minecraft:ore_andesite"; Not a JSON object: "minecraft:ore_diorite"; Not a JSON object: "minecraft:ore_granite"; Not a JSON object: "minecraft:ore_gravel"; Not a JSON object: "minecraft:ore_dirt"
-[19:04:44] [Render thread/WARN]: Failed to validate datapack
-java.util.concurrent.CompletionException: com.google.gson.JsonParseException: Error loading registry data: No key snowy in MapLike[{"not_snowy":"true"}]
-```
-
-And now compare the error, using the exact same datapack, with Cyanide included:
-
-```
-Error(s) loading registry minecraft:worldgen/biome:
-No key snowy in MapLike[{"not_snowy":"true"}]
-	at: file "data/cyanide/worldgen/configured_feature/broken_disk_gravel.json"
-	at: data pack cyanide-debug.zip
-	at: reference to "cyanide:broken_disk_gravel" from minecraft:worldgen/configured_feature
-Missing feature at index 7
-	at: "features", step underground_ores, index 6
-	at: file "data/cyanide/worldgen/biome/plains_broken_feature.json"
-	at: data pack cyanide-debug.zip
-Missing feature at index 6
-	at: "features", step underground_ores, index 6
-	at: file "data/cyanide/worldgen/biome/plains_unregistered_feature.json"
-	at: data pack cyanide-debug.zip; 
-
-Error(s) loading registry minecraft:worldgen/configured_feature:
-No key snowy in MapLike[{"not_snowy":"true"}]
-	at: file "data/cyanide/worldgen/configured_feature/broken_disk_gravel.json"
-	at: data pack cyanide-debug.zip
-Unknown element name: invalid_heightmap
-	at: file "data/cyanide/worldgen/configured_feature/broken_disk_gravel_2.json"
-	at: data pack cyanide-debug.zip
-```
-
-### Features
-
-World Generation Data Pack Error Improvements
-
-- Append the file to each error message. (`at: file "data/cyanide/blah/blah.json"`)
-- Append the source datapack to each error message (`at: data pack blah.zip`)
-- Group and categorize errors by registry.
-- Several improvements for error recovery:
-  - If an error occurs during a single registry parsing, don't abort parsing others.
-  - Record all errors that occur parsing a single registry, not just the first one.
-- Optional fields, in some cases, will error if a value is present, but invalid. Example:
-
-```
-In a biome json, the following is a valid temperature modifier.
-It is the same as using a temperature modifier of 'none'.
-In Cyanide, this would error.
-
-"temperature_modifier": "hocus pocus!"
-```
-
-- Improvements for select codecs, which now report trace information to identify where in the file an error occurred.
-  - Features in biomes identify both the index in the list, and the index as a generation step.
-  - Other fields such as `carvers`, `surface_builder`, etc. in biomes will be traced in error messages.
-- Removed the `Feature: Not a JSON Object` log messages. These are now upgraded to full errors.
-- Some fields, such as biome categories, temperature modifiers, and precipitations, have slightly improved error messages and will also show the range of valid values. Example:
-  
-```
-Unknown category name: not_a_category, expected one of [none, taiga, extreme_hills, jungle, mesa, plains, savanna, icy, the_end, beach, forest, ocean, desert, river, swamp, mushroom, nether, underground]
-	at: file "data/cyanide/worldgen/biome/invalid_category.json"
-	at: data pack test_data_pack.zip
-```
-
-- Template pools have additional error reporting identifying where in the file errors had occurred.
-- Invalid processor lists in template pools will be caught at datapack load instead of at runtime, causing hard crashes.
-- Invalid registry entries will error at datapack load rather than either defaulting, or returning null at runtime.
-- Feature cycle errors are improved, and will now print the exact features, indices, and source biomes (all by registry name) in the cycle, in order of the cycle.
-- Improvements for log messages for invalid loot tables and recipes:
-  - Stack traces are not printed to the log.
-  - Offending file names are identified and printed instead.
-- The "Loaded X Recipe(s)" log message is now accurate.
+Explanation | Example
+-- | --
+Errors will have the file, and source datapack appended. Some errors may have additional context if it can be inferred. | <pre>Parsing Error: Value provider too low: 0 [-1--1]<br>&emsp;  at 'placement'<br>&emsp;  at 'cyanide:worldgen/placed_feature/ore_tin' defined in 'file/Test.zip'</pre>
+The "Unbound values in registry" error tracks what files were referencing it. | <pre>Missing File Error: 'cyanide:worldgen/configured_feature/big_ores'<br>was referenced but not defined<br>&emsp;  at 'cyanide:worldgen/placed_feature/big_ores' defined in 'file/Test.zip'</pre>
+Illegal JSON will show the exact file location, along with the surrounding context of where it failed to parse. | <pre>Syntax Error: Expected ':' at line 3 column 13 path $.config<br>&emsp;  at:<br>{<br>&emsp;  "type": "minecraft:big_flowers",<br>&emsp;  "config" {<br>&emsp;           ^<br>&emsp;           here<br><br>&emsp;  at 'cyanide:worldgen/configured_feature/flowers' defined in  'file/Test.zip'</pre>
+"Feature Cycle" errors (where features are defined in different order within different biomes) trace and report the exact cycle found | <pre>A feature cycle was found.<br><br>Cycle:<br>At step 0<br>Feature 'minecraft:lake_lava_underground'<br>&emsp;  must be before 'minecraft:lake_lava_surface' (defined in 'minecraft:ocean'<br>&emsp;    at index 1, 2 and 1 others)<br>&emsp;  must be before 'cyanide:big_ore' (defined in 'minecraft:ocean' at index 2, 3)<br>&emsp;  must be before 'cyanide:small_ore' (defined in 'minecraft:plains' at index 0, 1)<br>&emsp;  must be before 'minecraft:lake_lava_underground' (defined in 'minecraft:ocean'<br>&emsp;    at index 0, 1 and 1 others)</pre>

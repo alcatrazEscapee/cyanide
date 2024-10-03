@@ -10,8 +10,9 @@
 !/**/build.gradle.kts
 !/**/src/**/*.*
 
-!/Test/pack.mcmeta
-!/Test/**/*.json
+!/Data/*/pack.mcmeta
+!/Data/*.zip
+!/Data/**/*.json
 
 !/img/**/*.png
 

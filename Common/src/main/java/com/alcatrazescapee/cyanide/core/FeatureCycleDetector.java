@@ -30,14 +30,14 @@ public final class FeatureCycleDetector
      * This makes it annoyingly difficult to fit into vanilla code, so we just assume that nobody would use this cursed bit of code,
      * unless they are using it to sort biomes.
      *
-     * @throws FeatureCycleException if a feature was detected.
+     * @throws IllegalStateException if a feature was detected.
      */
     @SuppressWarnings("ConstantConditions")
-    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStep(List<Holder<Biome>> allBiomes, Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures)
+    public static List<FeatureSorter.StepFeatureData> buildFeaturesPerStep(
+        List<Holder<Biome>> allBiomes,
+        Function<Holder<Biome>, List<HolderSet<PlacedFeature>>> biomeFeatures
+    )
     {
-        // The second method parameter to this method is if it was called recursively / from itself or not. We ignore it entirely
-        boolean calledFromTopLevel = true;
-
         // Maps to establish identity among features and biomes
         // We assign features and biomes ID numbers based on ==, and then create wrapper objects which respect equals() identity
         final Reference2IntMap<PlacedFeature> featureToIntIdMap = new Reference2IntOpenHashMap<>();
@@ -141,50 +141,7 @@ public final class FeatureCycleDetector
                 Collections.reverse(featureCycle);
 
                 // At this point, we have enough information to throw a custom exception, with the biomes and features involved
-                // if (true) here, as we keep the below code since it's from vanilla, but it is never executed
-                if (true) throw new FeatureCycleException(nodesToTracebacks, featureCycle);
-
-                // A cycle has been found from the DFS
-                if (!calledFromTopLevel)
-                {
-                    // This is a cheap way of exiting the below try { catch } recursive call
-                    throw new IllegalStateException("Feature order cycle found");
-                }
-
-                // This is the most quick and dirty way of trying to find what biomes are involved in a feature cycle
-                // We start with the list of all biomes, and collectively try and remove one biome at a time, redo the ENTIRE feature cycle detection, until we cannot remove any.
-                final List<Holder<Biome>> biomeSubset = new ArrayList<>(allBiomes);
-                int biomesLeft;
-                do
-                {
-                    biomesLeft = biomeSubset.size();
-                    ListIterator<Holder<Biome>> biomeSubsetIterator = biomeSubset.listIterator();
-
-                    // This iterator is O(n^2) for n = number of biomes
-                    // In the best case, we do O(n) calls, and make zero removals (or, do O(n) calls removing the first one every time)
-                    while (biomeSubsetIterator.hasNext())
-                    {
-                        Holder<Biome> biome = biomeSubsetIterator.next();
-                        biomeSubsetIterator.remove(); // Consider if we remove this biome
-
-                        try
-                        {
-                            // Then, we try and build features again, but without this biome
-                            // If this passes, we include the biome again below.
-                            // If it fails, the boolean above means that the "false" will just immediately throw an exception
-                            buildFeaturesPerStep(biomeSubset, biomeFeatures);
-                        }
-                        catch (IllegalStateException e)
-                        {
-                            // Continue, we were able to remove this biome
-                            // So, skip re-adding it and keep trying to narrow down the biome list
-                            continue;
-                        }
-                        biomeSubsetIterator.add(biome);
-                    }
-                } while (biomesLeft != biomeSubset.size());
-
-                throw new IllegalStateException("Feature order cycle found, involved biomes: " + biomeSubset);
+                throw new IllegalStateException(buildErrorMessage(nodesToTracebacks, featureCycle));
             }
         }
 
@@ -368,14 +325,6 @@ public final class FeatureCycleDetector
                 e -> e.location().toString(),
                 e -> "[Inline biome: " + biome + "]"
             );
-        }
-    }
-
-    static class FeatureCycleException extends RuntimeException
-    {
-        public FeatureCycleException(Map<FeatureData, Map<BiomeData, IntSet>> tracebacks, List<FeatureData> cycle)
-        {
-            super(buildErrorMessage(tracebacks, cycle));
         }
     }
 }

@@ -17,6 +17,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.stream.MalformedJsonException;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Decoder;
@@ -207,7 +208,7 @@ public final class RegistryLoader
                 final StringBuilder error = new StringBuilder();
 
                 // JsonParser.parseReader wraps everything, so grab the cause for the more relevant error
-                error.append("Syntax Error: %s\n".formatted(e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+                error.append("Syntax Error: %s\n".formatted(e.getCause() instanceof MalformedJsonException ? e.getCause().getMessage() : e.getMessage()));
 
                 try (Reader reader = resource.openAsReader())
                 {
