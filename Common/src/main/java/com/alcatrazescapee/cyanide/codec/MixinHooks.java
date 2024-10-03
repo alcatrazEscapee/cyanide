@@ -4,7 +4,6 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -219,51 +218,51 @@ public final class MixinHooks
     {
         // Redirect many .optionalFieldOf calls to Codecs
         // Use custom codec for grass color modifier as an extensible enum
-        final Codec<BiomeSpecialEffects> specialEffectsCodec = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.INT.fieldOf("fog_color").forGetter(BiomeSpecialEffects::getFogColor),
-            Codec.INT.fieldOf("water_color").forGetter(BiomeSpecialEffects::getWaterColor),
-            Codec.INT.fieldOf("water_fog_color").forGetter(BiomeSpecialEffects::getWaterFogColor),
-            Codec.INT.fieldOf("sky_color").forGetter(BiomeSpecialEffects::getSkyColor),
-            Codecs.optionalFieldOf(Codec.INT, "foliage_color").forGetter(BiomeSpecialEffects::getFoliageColorOverride),
-            Codecs.optionalFieldOf(Codec.INT, "grass_color").forGetter(BiomeSpecialEffects::getGrassColorOverride),
-            Codecs.optionalFieldOf(Codecs.fromEnum("grass color modifier", BiomeSpecialEffects.GrassColorModifier::values), "grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
-            Codecs.optionalFieldOf(AmbientParticleSettings.CODEC, "particle").forGetter(BiomeSpecialEffects::getAmbientParticleSettings),
-            Codecs.optionalFieldOf(SoundEvent.CODEC, "ambient_sound").forGetter(BiomeSpecialEffects::getAmbientLoopSoundEvent),
-            Codecs.optionalFieldOf(AmbientMoodSettings.CODEC, "mood_sound").forGetter(BiomeSpecialEffects::getAmbientMoodSettings),
-            Codecs.optionalFieldOf(AmbientAdditionsSettings.CODEC, "additions_sound").forGetter(BiomeSpecialEffects::getAmbientAdditionsSettings),
-            Codecs.optionalFieldOf(Music.CODEC, "music").forGetter(BiomeSpecialEffects::getBackgroundMusic)
-        ).apply(instance, BiomeSpecialEffectsAccessor::cyanide$new));
+        final Codec<BiomeSpecialEffects> specialEffectsCodec = RecordCodecBuilder.create(instance -> {
+            Codec<BiomeSpecialEffects.GrassColorModifier> codec = StringRepresentable.fromEnum(BiomeSpecialEffects.GrassColorModifier::values);
+            return instance.group(
+                Codec.INT.fieldOf("fog_color").forGetter(BiomeSpecialEffects::getFogColor),
+                Codec.INT.fieldOf("water_color").forGetter(BiomeSpecialEffects::getWaterColor),
+                Codec.INT.fieldOf("water_fog_color").forGetter(BiomeSpecialEffects::getWaterFogColor),
+                Codec.INT.fieldOf("sky_color").forGetter(BiomeSpecialEffects::getSkyColor),
+                Codec.INT.optionalFieldOf("foliage_color").forGetter(BiomeSpecialEffects::getFoliageColorOverride),
+                Codec.INT.optionalFieldOf("grass_color").forGetter(BiomeSpecialEffects::getGrassColorOverride),
+                codec.optionalFieldOf("grass_color_modifier", BiomeSpecialEffects.GrassColorModifier.NONE).forGetter(BiomeSpecialEffects::getGrassColorModifier),
+                AmbientParticleSettings.CODEC.optionalFieldOf("particle").forGetter(BiomeSpecialEffects::getAmbientParticleSettings),
+                SoundEvent.CODEC.optionalFieldOf("ambient_sound").forGetter(BiomeSpecialEffects::getAmbientLoopSoundEvent),
+                AmbientMoodSettings.CODEC.optionalFieldOf("mood_sound").forGetter(BiomeSpecialEffects::getAmbientMoodSettings),
+                AmbientAdditionsSettings.CODEC.optionalFieldOf("additions_sound").forGetter(BiomeSpecialEffects::getAmbientAdditionsSettings),
+                Music.CODEC.optionalFieldOf("music").forGetter(BiomeSpecialEffects::getBackgroundMusic)
+            ).apply(instance, BiomeSpecialEffectsAccessor::cyanide$new);
+        });
 
         // Add more Codecs.reporting() calls
         // Replace the Codec.list() with one that has indexes
         // Don't use the codec directly, instead use an improved registry entry codec implementation
-        final Codec<PlacedFeature> placedFeatureCodec = RecordCodecBuilder.create(instance -> instance.group(
-            Codecs.reporting(ConfiguredFeature.CODEC.fieldOf("feature"), "feature").forGetter(PlacedFeature::feature),
-            Codecs.reporting(Codecs.list(PlacementModifier.CODEC).fieldOf("placement"), "placement").forGetter(PlacedFeature::placement)
-        ).apply(instance, PlacedFeature::new));
-        final Codec<HolderSet<PlacedFeature>> placedFeatureListCodec = Codecs.registryEntryListCodec(Registries.PLACED_FEATURE, placedFeatureCodec);
+        final Codec<PlacedFeature> placedFeatureCodec = RecordCodecBuilder.create(instance -> {
+            MapCodec<List<PlacementModifier>> codec = PlacementModifier.CODEC.listOf().fieldOf("placement");
+            MapCodec<Holder<ConfiguredFeature<?, ?>>> codec1 = ConfiguredFeature.CODEC.fieldOf("feature");
+            return instance.group(
+                codec1.forGetter(PlacedFeature::feature),
+                codec.forGetter(PlacedFeature::placement)
+            ).apply(instance, PlacedFeature::new);
+        });
 
         // Remove promotePartial calls, as logging at this level is pointless since we don't have a file or a registry name
         // Use much improved codecs for Codecs.list(), registry codecs
         // Improve the feature list with one that reports generation steps
         // Add additional calls to Codecs.reporting() to contextualize where things are going wrong.
-        final MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codecs.reporting(Codec.simpleMap(
+        final MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec = RecordCodecBuilder.mapCodec(instance -> {
+            MapCodec<Map<GenerationStep.Carving, HolderSet<ConfiguredWorldCarver<?>>>> codec = Codec.simpleMap(
                 GenerationStep.Carving.CODEC,
                 ConfiguredWorldCarver.LIST_CODEC,
                 StringRepresentable.keys(GenerationStep.Carving.values())
-            ).fieldOf("carvers"), "carvers").forGetter(c -> ((BiomeGenerationSettingsAccessor) c).cyanide$getCarvers()),
-            Codecs.list(
-                placedFeatureListCodec,
-                (e, i) -> {
-                    if (i >= 0 && i < DECORATION_STEPS.length)
-                    {
-                        return appendErrorLocation(e, "\"features\", step " + DECORATION_STEPS[i].name().toLowerCase(Locale.ROOT) + ", index " + i);
-                    }
-                    return appendErrorLocation(e, "\"features\", unknown step, index " + i);
-                }
-            ).fieldOf("features").forGetter(BiomeGenerationSettings::features)
-        ).apply(instance, BiomeGenerationSettingsAccessor::cyanide$new));
+            ).fieldOf("carvers");
+            return instance.group(
+                codec.forGetter(c -> ((BiomeGenerationSettingsAccessor) c).cyanide$getCarvers()),
+                PlacedFeature.LIST_OF_LISTS_CODEC.fieldOf("features").forGetter(BiomeGenerationSettings::features)
+            ).apply(instance, BiomeGenerationSettingsAccessor::cyanide$new);
+        });
 
         return XPlatform.INSTANCE.makeBiomeCodec(specialEffectsCodec, placedFeatureCodec, biomeGenerationSettingsCodec);
     }
@@ -271,7 +270,8 @@ public final class MixinHooks
     public static <E extends SinglePoolElement> RecordCodecBuilder<E, Holder<StructureProcessorList>> makeSinglePoolElementProcessorsCodec()
     {
         // Use improved structure processor list codec and add a reporting field to 'processors'
-        return Codecs.reporting(structureProcessorListCodec().fieldOf("processors"), "processors").forGetter(e -> ((SinglePoolElementAccessor) e).cyanide$getProcessors());
+        MapCodec<Holder<StructureProcessorList>> codec = structureProcessorListCodec().fieldOf("processors");
+        return codec.forGetter(e -> ((SinglePoolElementAccessor) e).cyanide$getProcessors());
     }
 
     public static void cleanLootTableError(Logger logger, String message, Object p0, Object p1)
@@ -305,13 +305,13 @@ public final class MixinHooks
         {
             // Use improved list and either codecs, and use registry entry codec instead of the registry file codec
             // Add reporting codec for the processors field
-            final Codec<StructureProcessorList> listObjectCodec = Codecs.list(StructureProcessorType.SINGLE_CODEC)
+            final Codec<StructureProcessorList> listObjectCodec = StructureProcessorType.SINGLE_CODEC.listOf()
                 .xmap(StructureProcessorList::new, StructureProcessorList::list);
-            Codec<StructureProcessorList> directCodec = Codecs.either(
-                ShapedCodec.likeMap(listObjectCodec.fieldOf("processors").codec()),
-                ShapedCodec.likeList(listObjectCodec)
+            Codec<StructureProcessorList> directCodec = Codec.either(
+                listObjectCodec.fieldOf("processors").codec(),
+                listObjectCodec
             ).xmap(e -> e.map(Function.identity(), Function.identity()), Either::left);
-            STRUCTURE_PROCESSOR_LIST_CODEC = Codecs.registryEntryCodec(Registries.PROCESSOR_LIST, directCodec);
+            STRUCTURE_PROCESSOR_LIST_CODEC = RegistryFileCodec.create(Registries.PROCESSOR_LIST, directCodec);
         }
         return STRUCTURE_PROCESSOR_LIST_CODEC;
     }

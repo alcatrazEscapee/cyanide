@@ -1,15 +1,13 @@
 package com.alcatrazescapee.cyanide.mixin;
 
 import java.util.List;
-import java.util.function.Supplier;
 
 import net.minecraft.core.Holder;
-import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.RegistryFileCodec;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 
-import com.alcatrazescapee.cyanide.codec.Codecs;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import org.spongepowered.asm.mixin.*;
@@ -24,13 +22,13 @@ public abstract class StructureTemplatePoolMixin
 
     static
     {
-        CODEC = Codecs.registryEntryCodec(Registries.TEMPLATE_POOL, DIRECT_CODEC);
+        CODEC = RegistryFileCodec.create(Registries.TEMPLATE_POOL, DIRECT_CODEC);
     }
 
     @Dynamic("lambda method in <cinit>")
     @Redirect(method = "*", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/Codec;listOf()Lcom/mojang/serialization/Codec;", remap = false))
     private static Codec<List<Pair<StructurePoolElement, Integer>>> addReportingToCodec(Codec<Pair<StructurePoolElement, Integer>> codec)
     {
-        return Codecs.list(codec);
+        return codec.listOf();
     }
 }

@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeSpecialEffects;
@@ -12,8 +12,6 @@ import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.crafting.conditions.ICondition;
-
-import com.alcatrazescapee.cyanide.codec.Codecs;
 
 public final class ForgePlatform implements XPlatform
 {
@@ -27,20 +25,29 @@ public final class ForgePlatform implements XPlatform
     public Codec<Biome> makeBiomeCodec(Codec<BiomeSpecialEffects> specialEffectsCodec, Codec<PlacedFeature> placedFeatureCodec, MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec)
     {
         // Forge AT's ClimateSettings for us
-        final MapCodec<Biome.ClimateSettings> climateSettingsCodec = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Codecs.reporting(Codec.BOOL.fieldOf("has_precipitation"), "has_precipitation").forGetter(Biome.ClimateSettings::hasPrecipitation),
-            Codecs.reporting(Codec.FLOAT.fieldOf("temperature"), "temperature").forGetter(Biome.ClimateSettings::temperature),
-            Codecs.optionalFieldOf(Codecs.fromEnum("temperature modifier", Biome.TemperatureModifier::values), "temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(Biome.ClimateSettings::temperatureModifier),
-            Codecs.reporting(Codec.FLOAT.fieldOf("downfall"), "downfall").forGetter(Biome.ClimateSettings::downfall)
-        ).apply(instance, Biome.ClimateSettings::new));
+        final MapCodec<Biome.ClimateSettings> climateSettingsCodec = RecordCodecBuilder.mapCodec(instance -> {
+            Codec<Biome.TemperatureModifier> codec = StringRepresentable.fromEnum(Biome.TemperatureModifier::values);
+            MapCodec<Float> codec1 = Codec.FLOAT.fieldOf("downfall");
+            MapCodec<Float> codec2 = Codec.FLOAT.fieldOf("temperature");
+            MapCodec<Boolean> codec3 = Codec.BOOL.fieldOf("has_precipitation");
+            return instance.group(
+                codec3.forGetter(Biome.ClimateSettings::hasPrecipitation),
+                codec2.forGetter(Biome.ClimateSettings::temperature),
+                codec.optionalFieldOf("temperature_modifier", Biome.TemperatureModifier.NONE).forGetter(Biome.ClimateSettings::temperatureModifier),
+                codec1.forGetter(Biome.ClimateSettings::downfall)
+            ).apply(instance, Biome.ClimateSettings::new);
+        });
 
         // Add Codecs.reporting() to some fields
-        return RecordCodecBuilder.create(instance -> instance.group(
-            climateSettingsCodec.forGetter(b -> b.modifiableBiomeInfo().getOriginalBiomeInfo().climateSettings()),
-            Codecs.reporting(specialEffectsCodec.fieldOf("effects"), "effects").forGetter(b -> b.modifiableBiomeInfo().getOriginalBiomeInfo().effects()),
-            biomeGenerationSettingsCodec.forGetter(Biome::getGenerationSettings),
-            MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings)
-        ).apply(instance, this::makeBiome));
+        return RecordCodecBuilder.create(instance -> {
+            MapCodec<BiomeSpecialEffects> codec = specialEffectsCodec.fieldOf("effects");
+            return instance.group(
+                climateSettingsCodec.forGetter(b -> b.modifiableBiomeInfo().getOriginalBiomeInfo().climateSettings()),
+                codec.forGetter(b -> b.modifiableBiomeInfo().getOriginalBiomeInfo().effects()),
+                biomeGenerationSettingsCodec.forGetter(Biome::getGenerationSettings),
+                MobSpawnSettings.CODEC.forGetter(Biome::getMobSettings)
+            ).apply(instance, this::makeBiome);
+        });
     }
 
     private Biome makeBiome(Biome.ClimateSettings climateSettings, BiomeSpecialEffects specialEffects, BiomeGenerationSettings generationSettings, MobSpawnSettings mobSpawnSettings)
