@@ -38,6 +38,10 @@ subprojects {
             forRepository { maven("https://cursemaven.com") }
             filter { includeGroup("curse.maven") }
         }
+        exclusiveContent {
+            forRepository { maven("https://oss.sonatype.org/content/repositories/snapshots/") }
+            filter { includeGroup("systems.manifold") }
+        }
     }
 
     tasks {
@@ -63,6 +67,10 @@ subprojects {
                     "fabricLoaderVersion" to fabricLoaderVersion,
                 ))
             }
+        }
+
+        withType<JavaCompile> {
+            options.compilerArgs.add("-Xplugin:Manifold")
         }
     }
 }

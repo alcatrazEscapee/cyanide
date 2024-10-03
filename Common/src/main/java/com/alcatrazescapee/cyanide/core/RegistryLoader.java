@@ -104,7 +104,7 @@ public final class RegistryLoader
         // causes.
         if (reporter.hasError())
         {
-            throw new IllegalStateException(reporter.logErrors());
+            throw new IllegalStateException(reporter.buildError());
         }
 
         // Bake registries - everything should be fine at this point
@@ -303,9 +303,14 @@ public final class RegistryLoader
                 error.append("Missing File Error: '%s' was referenced but not defined\n".formatted(prettyId(e.getKey())));
 
                 // Consult the map of unbound references to figure out who was referencing this object
-                reporter.unboundReferences.getOrDefault(e.getKey(), List.of()).forEach(ref -> error
-                    .append(at(ref.resource.sourcePackId(), ref.key))
-                    .append("\n"));
+                reporter.unboundReferences.getOrDefault(e.getKey(), List.of())
+                    .stream()
+                    .map(ref -> at(ref.resource.sourcePackId(), ref.key))
+                    .distinct()
+                    .sorted()
+                    .forEach(message -> error
+                        .append(message)
+                        .append("\n"));
 
                 registryReporter.unboundErrors.add(error.toString());
             });
@@ -366,7 +371,6 @@ public final class RegistryLoader
     {
         final Map<ResourceKey<? extends Registry<?>>, RegistryReporter> errors = new IdentityHashMap<>();
         final Map<ResourceKey<?>, List<UnboundReference>> unboundReferences = new IdentityHashMap<>();
-
         @Nullable UnboundReference currentReference = null;
 
         RegistryReporter registry(ResourceKey<? extends Registry<?>> key)
@@ -381,19 +385,19 @@ public final class RegistryLoader
                 .anyMatch(RegistryReporter::hasError);
         }
 
-        String logErrors()
+        String buildError()
         {
-            final StringBuilder log = new StringBuilder();
+            final StringBuilder builder = new StringBuilder();
 
-            log.append("\n\n===== An error occurred loading registries =====\n\n");
+            builder.append("\n\n===== An error occurred loading registries =====\n\n");
             errors.forEach((key, reporter) -> {
                 if (reporter.hasError())
                 {
-                    reporter.logErrors(log, key);
+                    reporter.buildError(builder, key);
                 }
             });
 
-            return log.toString();
+            return builder.toString();
         }
     }
 
@@ -410,28 +414,28 @@ public final class RegistryLoader
                 || !miscErrors.isEmpty();
         }
 
-        void logErrors(StringBuilder log, ResourceKey<? extends Registry<?>> key)
+        void buildError(StringBuilder builder, ResourceKey<? extends Registry<?>> key)
         {
-            log.append("In registry '%s':\n\n".formatted(key.location()));
+            builder.append("Registry '%s':\n\n".formatted(key.location()));
 
             loadingErrors.entrySet()
                 .stream()
                 .sorted(Comparator.comparing(e -> e.getKey().location()))
-                .forEach(entry -> log
+                .forEach(entry -> builder
                     .append(entry.getValue().message)
                     .append("\n")
                     .append(at(entry.getValue().sourcePackId, entry.getKey()))
                     .append("\n\n"));
 
-            unboundErrors.forEach(error -> log
+            unboundErrors.forEach(error -> builder
                 .append(error)
                 .append("\n"));
 
-            miscErrors.forEach(error -> log
+            miscErrors.forEach(error -> builder
                 .append(error)
                 .append("\n"));
 
-            log.append("-----\n\n");
+            builder.append("-----\n");
         }
     }
 

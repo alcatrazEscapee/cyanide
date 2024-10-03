@@ -29,6 +29,10 @@ dependencies {
     implementation(group = "com.google.code.findbugs", name = "jsr305", version = "3.0.1")
     implementation(group = "org.jetbrains", name = "annotations", version = "23.0.0")
 
+    implementation(group = "systems.manifold", name = "manifold-ext-rt", version = "2024.1.34-20241001.011431-2")
+    annotationProcessor(group = "systems.manifold", name = "manifold-ext", version = "2024.1.34-20241001.011431-2")
+    annotationProcessor(group = "systems.manifold", name = "manifold-preprocessor", version = "2024.1.34-20241001.011431-2")
+
     compileOnly(project(":Common"))
 }
 
@@ -49,6 +53,9 @@ loom {
 }
 
 tasks {
-    named<JavaCompile>("compileJava") { source(project(":Common").sourceSets.main.get().allSource) }
+    named<JavaCompile>("compileJava") {
+        source(project(":Common").sourceSets.main.get().allSource)
+        options.compilerArgs.add("-APLATFORM_FABRIC")
+    }
     named<ProcessResources>("processResources") { from(project(":Common").sourceSets.main.get().resources) }
 }

@@ -20,15 +20,13 @@
     "client": []
   },
   "mixins": [
-    "cyanide.mixins.json",
-    "cyanide.fabric.mixins.json"
+    "cyanide.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${fabricLoaderVersion}",
     "fabric": "*",
     "minecraft": ">=${minecraftVersion}",
     "java": ">=${modJavaVersion}"
-  },
-  "accessWidener": "cyanide.accesswidener"
+  }
 }
   

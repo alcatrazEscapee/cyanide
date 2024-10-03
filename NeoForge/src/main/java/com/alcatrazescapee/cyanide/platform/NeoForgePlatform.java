@@ -3,9 +3,11 @@ package com.alcatrazescapee.cyanide.platform;
 import java.util.Optional;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Decoder;
+import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.conditions.ConditionalOps;
 import net.neoforged.neoforge.common.util.NeoForgeExtraCodecs;
 
+@Mod("cyanide")
 public final class NeoForgePlatform implements XPlatform
 {
     @Override

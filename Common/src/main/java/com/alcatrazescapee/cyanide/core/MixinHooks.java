@@ -1,18 +1,41 @@
 package com.alcatrazescapee.cyanide.core;
 
-import net.minecraft.world.level.levelgen.WorldGenSettings;
+import java.util.stream.Stream;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.MapLike;
+import com.mojang.serialization.RecordBuilder;
 
-import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
 
 public final class MixinHooks
 {
-    @NotNull
     @SuppressWarnings("unchecked")
     public static <T> T cast(Object o)
     {
         return (T) o;
+    }
+
+    public static <T> MapCodec<T> wrapFieldOf(MapCodec<T> codec, String field)
+    {
+        return new MapCodec<>() {
+            @Override
+            public <T1> Stream<T1> keys(DynamicOps<T1> ops)
+            {
+                return codec.keys(ops);
+            }
+
+            @Override
+            public <T1> DataResult<T> decode(DynamicOps<T1> ops, MapLike<T1> input)
+            {
+                return codec.decode(ops, input).mapError(e -> e + "\n  at '" + field + "'");
+            }
+
+            @Override
+            public <T1> RecordBuilder<T1> encode(T input, DynamicOps<T1> ops, RecordBuilder<T1> prefix)
+            {
+                return codec.encode(input, ops, prefix);
+            }
+        };
     }
 }

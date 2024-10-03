@@ -15,6 +15,7 @@ base {
 
 dependencies {
     implementation(project(":Common"))
+    annotationProcessor(group = "systems.manifold", name = "manifold-preprocessor", version = "2024.1.34-20241001.011431-2")
 }
 
 neoForge {

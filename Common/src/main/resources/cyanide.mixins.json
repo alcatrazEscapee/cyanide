@@ -6,14 +6,14 @@
   "mixins": [
     "FeatureSorterMixin",
     "RegistryDataLoaderMixin",
+    "RegistryMixin",
     "accessor.MappedRegistryAccessor",
-    "accessor.RegistryDataLoaderAccessor"
+    "accessor.RegistryDataLoaderAccessor",
+    "generic.FieldOfMixin",
+    "generic.PromotePartialMixin"
   ],
   "client": [
     "client.CreateWorldScreenMixin"
   ],
-  "injectors": {
-    "defaultRequire": 1
-  },
   "refmap": "cyanide.refmap.json"
 }
