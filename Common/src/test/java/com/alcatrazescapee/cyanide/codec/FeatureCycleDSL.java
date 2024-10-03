@@ -2,10 +2,10 @@ package com.alcatrazescapee.cyanide.codec;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.alcatrazescapee.cyanide.core.FeatureCycleDetector;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;

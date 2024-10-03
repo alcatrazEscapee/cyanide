@@ -1,15 +1,14 @@
-package com.alcatrazescapee.cyanide.codec;
+package com.alcatrazescapee.cyanide.core;
 
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import it.unimi.dsi.fastutil.Hash;
 import org.apache.commons.lang3.mutable.MutableInt;
-import net.minecraft.Util;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.world.level.biome.Biome;
@@ -23,8 +22,13 @@ import it.unimi.dsi.fastutil.objects.*;
 public final class FeatureCycleDetector
 {
     /**
-     * A modified version of {@link FeatureSorter#buildFeaturesPerStep(List, Function, boolean)} with several improvements, in order to properly report errors.
-     * Added comments, removed vanilla's slow as heck "try this again by removing biomes until it doesn't break" detector and replace with one that is able to track the detected cycle during the DFS.
+     * A modified version of {@link FeatureSorter#buildFeaturesPerStep} with several improvements, in order to properly report errors.
+     * Added comments, removed vanilla's slow as heck "try this again by removing biomes until it doesn't break" detector and replace
+     * with one that is able to track the detected cycle during the DFS.
+     * <p>
+     * Note that vanilla, for some insane reason, decided to code this to a generic {@code T} parameter, instead of {@code Holder<Biome>}.
+     * This makes it annoyingly difficult to fit into vanilla code, so we just assume that nobody would use this cursed bit of code,
+     * unless they are using it to sort biomes.
      *
      * @throws FeatureCycleException if a feature was detected.
      */
@@ -122,7 +126,7 @@ public final class FeatureCycleDetector
                 }
 
                 // Trim the cycle - the last feature should occur somewhere in the cycle. This is done before reversing, so last = index 0
-                final FeatureData loop = featureCycle.get(0);
+                final FeatureData loop = featureCycle.getFirst();
                 for (int i = 1; i < featureCycle.size(); i++)
                 {
                     if (featureCycle.get(i).equals(loop))
@@ -195,10 +199,22 @@ public final class FeatureCycleDetector
             final List<PlacedFeature> featuresAtStep = sortedFeatureData.stream()
                 .filter(arg -> arg.step() == finalStepIndex)
                 .map(FeatureData::feature)
-                .collect(Collectors.toList());
+                .toList();
 
             final int totalIndex = featuresAtStep.size();
-            final Object2IntMap<PlacedFeature> featureToIndexMapping = new Object2IntOpenCustomHashMap<>(totalIndex, Util.identityStrategy());
+            final Object2IntMap<PlacedFeature> featureToIndexMapping = new Object2IntOpenCustomHashMap<>(totalIndex, new Hash.Strategy<>() {
+                @Override
+                public int hashCode(PlacedFeature o)
+                {
+                    return System.identityHashCode(o);
+                }
+
+                @Override
+                public boolean equals(PlacedFeature a, PlacedFeature b)
+                {
+                    return a == b;
+                }
+            });
             for (int index = 0; index < totalIndex; ++index)
             {
                 featureToIndexMapping.put(featuresAtStep.get(index), index);
@@ -210,7 +226,7 @@ public final class FeatureCycleDetector
         return featuresPerStepData.build();
     }
 
-    public static boolean depthFirstSearch(Map<FeatureData, Set<FeatureData>> edges, Set<FeatureData> nonCyclicalNodes, Set<FeatureData> pathSet, Consumer<FeatureData> onNonCyclicalNodeFound, Consumer<FeatureData> onCyclicalNodeFound, FeatureData start)
+    private static boolean depthFirstSearch(Map<FeatureData, Set<FeatureData>> edges, Set<FeatureData> nonCyclicalNodes, Set<FeatureData> pathSet, Consumer<FeatureData> onNonCyclicalNodeFound, Consumer<FeatureData> onCyclicalNodeFound, FeatureData start)
     {
         // Called initially with:
         // nonCyclicalNodes = { ... } does not contain start

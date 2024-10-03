@@ -4,11 +4,8 @@
   "package": "com.alcatrazescapee.cyanide.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "accessor.BiomeAccessor",
-    "accessor.BiomeClimateSettingsAccessor"
   ],
   "client": [
-    "client.CreateWorldScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

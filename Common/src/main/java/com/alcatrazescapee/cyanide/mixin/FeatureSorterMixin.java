@@ -3,15 +3,12 @@ package com.alcatrazescapee.cyanide.mixin;
 import java.util.List;
 import java.util.function.Function;
 
-import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
-import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
-import com.alcatrazescapee.cyanide.codec.FeatureCycleDetector;
-import com.alcatrazescapee.cyanide.codec.MixinHooks;
+import com.alcatrazescapee.cyanide.core.FeatureCycleDetector;
+import com.alcatrazescapee.cyanide.core.MixinHooks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

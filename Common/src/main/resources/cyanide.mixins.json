@@ -4,17 +4,10 @@
   "package": "com.alcatrazescapee.cyanide.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "accessor.BiomeGenerationSettingsAccessor",
-    "accessor.BiomeSpecialEffectsAccessor",
+    "accessor.MappedRegistryAccessor",
     "accessor.RegistryDataLoaderAccessor",
-    "accessor.SinglePoolElementAccessor",
-    "BiomeMixin",
     "FeatureSorterMixin",
-    "LootTablesMixin",
-    "RecipeManagerMixin",
-    "RegistryDataLoaderMixin",
-    "SinglePoolElementMixin",
-    "StructureTemplatePoolMixin"
+    "RegistryDataLoaderMixin"
   ],
   "client": [
   ],

@@ -1,24 +1,19 @@
 package com.alcatrazescapee.cyanide.platform;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
-import com.alcatrazescapee.cyanide.codec.MixinHooks;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Decoder;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.core.WritableRegistry;
-import net.minecraft.resources.RegistryDataLoader;
-import net.minecraft.resources.RegistryOps;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.BiomeSpecialEffects;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-import org.jetbrains.annotations.Nullable;
 
 public interface XPlatform
 {
@@ -31,18 +26,18 @@ public interface XPlatform
             .orElseThrow(() -> new NullPointerException("Failed to load service for " + clazz.getName()));
     }
 
-    /**
-     * Mirrors the Fabric API mixin to trigger a callback before registries are loaded
-     */
-    default void doPreRegistryLoadCallback(List<? extends MixinHooks.RegistryDataPair<?>> registriesList) {}
+    default void postFabricBeforeRegistryLoadEvent(Map<ResourceKey<? extends Registry<?>>, Registry<?>> registryMap) {}
 
     /**
-     * Mirrors the Forge patch to allow conditions in {@link RegistryDataLoader#loadRegistryContents(RegistryOps.RegistryInfoLookup, ResourceManager, ResourceKey, WritableRegistry, Decoder, Map)}
+     * @return {@code true} to skip this registry element from loading
      */
-    default boolean shouldRegisterEntry(JsonElement json)
+    default boolean checkFabricConditions(JsonElement json, ResourceKey<?> key, HolderLookup.Provider lookup)
     {
-        return true;
+        return false;
     }
 
-    Codec<Biome> makeBiomeCodec(Codec<BiomeSpecialEffects> specialEffectsCodec, Codec<PlacedFeature> placedFeatureCodec, MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec);
+    default <T> Decoder<Optional<T>> getNeoForgeConditionalCodec(Codec<T> codec)
+    {
+        return codec.map(Optional::of);
+    }
 }
