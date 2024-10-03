@@ -18,12 +18,6 @@ import com.alcatrazescapee.cyanide.codec.Codecs;
 public final class ForgePlatform implements XPlatform
 {
     @Override
-    public String registryDirPath(ResourceLocation registryKey)
-    {
-        return ForgeHooks.prefixNamespace(registryKey);
-    }
-
-    @Override
     public boolean shouldRegisterEntry(JsonElement json)
     {
         return ICondition.shouldRegisterEntry(json);

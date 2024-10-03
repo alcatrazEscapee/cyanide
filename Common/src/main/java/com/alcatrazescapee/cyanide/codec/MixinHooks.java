@@ -67,7 +67,7 @@ public final class MixinHooks
         ));
     }
 
-    record RegistryDataPair<R>(RegistryDataLoader.RegistryData<R> data, MappedRegistry<R> registry)
+    public record RegistryDataPair<R>(RegistryDataLoader.RegistryData<R> data, MappedRegistry<R> registry)
     {
         static <R> RegistryDataPair<R> create(RegistryDataLoader.RegistryData<R> data)
         {
@@ -84,6 +84,9 @@ public final class MixinHooks
     {
         final List<? extends RegistryDataPair<?>> registryPairs = registryData.stream().map(RegistryDataPair::create).toList();
         final Map<ResourceKey<? extends Registry<?>>, RegistryOps.RegistryInfo<?>> registryInfo = new HashMap<>();
+
+        // Mirror the fabric mixin that inserts a callback
+        XPlatform.INSTANCE.doPreRegistryLoadCallback(registryPairs);
 
         registryAccess.registries().forEach(registryEntry -> registryInfo.put(registryEntry.key(), createImmutableRegistryInfo(registryEntry.value())));
         registryPairs.forEach(pair -> registryInfo.put(pair.registry().key(), createMutableRegistryInfo(pair.registry())));
@@ -144,7 +147,10 @@ public final class MixinHooks
     private static <R> void loadRegistryData(ResourceManager resourceManager, RegistryOps.RegistryInfoLookup registryInfoLookup, RegistryDataPair<R> pair, List<String> errors)
     {
         final ResourceKey<? extends Registry<R>> registryKey = pair.data.key();
-        final String registryName = XPlatform.INSTANCE.registryDirPath(registryKey.location());
+
+        // This method is patched in Forge, and mixin in Fabric to add mod datapack registry namespacing
+        // Trying to replicate behavior is difficult, so we just invoke the original here
+        final String registryName = RegistryDataLoaderAccessor.invoke$registryDirPath(registryKey.location());
         final FileToIdConverter fileToIdConverter = FileToIdConverter.json(registryName);
         final RegistryOps<JsonElement> registryOps = RegistryOps.create(JsonOps.INSTANCE, registryInfoLookup);
 
@@ -160,10 +166,11 @@ public final class MixinHooks
             {
                 final Reader reader = entryResource.openAsReader();
                 final JsonElement json = JsonParser.parseReader(reader);
-                final DataResult<R> dataResult = pair.data().elementCodec().parse(registryOps, json);
 
                 // Mirror the Forge patch in RegistryDataLoader
                 if (!XPlatform.INSTANCE.shouldRegisterEntry(json)) continue;
+
+                final DataResult<R> dataResult = pair.data().elementCodec().parse(registryOps, json);
 
                 dataResult.result().ifPresent(result -> pair.registry().register(entryKey, result, entryResource.isBuiltin() ? Lifecycle.stable() : dataResult.lifecycle()));
                 dataResult.error().ifPresent(error -> errorsInRegistry.add(

@@ -6,6 +6,7 @@
   "mixins": [
     "accessor.BiomeGenerationSettingsAccessor",
     "accessor.BiomeSpecialEffectsAccessor",
+    "accessor.RegistryDataLoaderAccessor",
     "accessor.SinglePoolElementAccessor",
     "BiomeMixin",
     "FeatureSorterMixin",

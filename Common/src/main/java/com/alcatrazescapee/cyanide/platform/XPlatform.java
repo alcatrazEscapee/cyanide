@@ -1,7 +1,9 @@
 package com.alcatrazescapee.cyanide.platform;
 
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import com.alcatrazescapee.cyanide.codec.MixinHooks;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Decoder;
@@ -30,12 +32,9 @@ public interface XPlatform
     }
 
     /**
-     * From {@link RegistryDataLoader#registryDirPath(ResourceLocation)}, required to catch the Forge patch here
+     * Mirrors the Fabric API mixin to trigger a callback before registries are loaded
      */
-    default String registryDirPath(ResourceLocation registryKey)
-    {
-        return registryKey.getPath();
-    }
+    default void doPreRegistryLoadCallback(List<? extends MixinHooks.RegistryDataPair<?>> registriesList) {}
 
     /**
      * Mirrors the Forge patch to allow conditions in {@link RegistryDataLoader#loadRegistryContents(RegistryOps.RegistryInfoLookup, ResourceManager, ResourceKey, WritableRegistry, Decoder, Map)}

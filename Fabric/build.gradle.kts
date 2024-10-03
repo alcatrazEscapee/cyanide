@@ -40,7 +40,7 @@ dependencies {
     })
 
     modImplementation(group = "net.fabricmc", name = "fabric-loader", version = fabricLoaderVersion)
-    // modImplementation(group = "net.fabricmc.fabric-api", name = "fabric-api", version = fabricVersion)
+    modImplementation(group = "net.fabricmc.fabric-api", name = "fabric-api", version = fabricVersion)
 
     implementation(project(":Common"))
     implementation(group = "org.jetbrains", name = "annotations", version = "23.0.0")

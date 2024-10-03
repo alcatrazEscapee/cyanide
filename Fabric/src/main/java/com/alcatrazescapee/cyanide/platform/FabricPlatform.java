@@ -1,8 +1,17 @@
 package com.alcatrazescapee.cyanide.platform;
 
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.fabricmc.fabric.api.event.registry.DynamicRegistrySetupCallback;
+import net.fabricmc.fabric.impl.registry.sync.DynamicRegistryViewImpl;
+import net.minecraft.core.Registry;
+import net.minecraft.core.WritableRegistry;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
@@ -18,6 +27,19 @@ import com.alcatrazescapee.cyanide.mixin.accessor.BiomeClimateSettingsAccessor;
 
 public final class FabricPlatform implements XPlatform
 {
+    @Override
+    @SuppressWarnings("UnstableApiUsage")
+    public void doPreRegistryLoadCallback(List<? extends MixinHooks.RegistryDataPair<?>> registriesList)
+    {
+        final Map<ResourceKey<? extends Registry<?>>, Registry<?>> registries = new IdentityHashMap<>(registriesList.size());
+        for (var pair : registriesList)
+        {
+            registries.put(pair.registry().key(), pair.registry());
+        }
+
+        DynamicRegistrySetupCallback.EVENT.invoker().onRegistrySetup(new DynamicRegistryViewImpl(registries));
+    }
+
     @Override
     public Codec<Biome> makeBiomeCodec(Codec<BiomeSpecialEffects> specialEffectsCodec, Codec<PlacedFeature> placedFeatureCodec, MapCodec<BiomeGenerationSettings> biomeGenerationSettingsCodec)
     {
