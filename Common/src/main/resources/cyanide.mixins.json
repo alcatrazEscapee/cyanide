@@ -5,6 +5,8 @@
   "compatibilityLevel": "JAVA_17",
   "mixins": [
     "FeatureSorterMixin",
+    "FloatProviderMixin",
+    "IntProviderMixin",
     "RecipeManagerMixin",
     "RegistryDataLoaderMixin",
     "RegistryMixin",

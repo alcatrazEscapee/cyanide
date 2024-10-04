@@ -68,7 +68,7 @@ public abstract class FieldOfMixin
     )
     private static <A> MapCodec<A> addErrorReportingToFieldOf(Codec<A> codec, String name, Operation<MapCodec<A>> original)
     {
-        return MixinHooks.wrapFieldOf(original.call(codec, name), name);
+        return MixinHooks.fieldOf(original.call(codec, name), name);
     }
 
     @WrapOperation(
@@ -90,6 +90,6 @@ public abstract class FieldOfMixin
     )
     private static <A> MapCodec<A> addErrorReportingToMapCodecFieldOf(SimpleMapCodec<?, ?> codec, String name, Operation<MapCodec<A>> original)
     {
-        return MixinHooks.wrapFieldOf(original.call(codec, name), name);
+        return MixinHooks.fieldOf(original.call(codec, name), name);
     }
 }
