@@ -1,5 +1,5 @@
 plugins {
-    id("net.neoforged.moddev") version "0.1.112"
+    id("net.neoforged.moddev") version "2.0.78"
 }
 
 val modId: String by extra
@@ -20,7 +20,7 @@ dependencies {
 }
 
 neoForge {
-    version.set(neoForgeVersion)
+    version = neoForgeVersion
 
     parchment {
         minecraftVersion.set(parchmentMinecraftVersion)

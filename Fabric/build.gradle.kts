@@ -1,5 +1,5 @@
 plugins {
-    id("fabric-loom") version "1.7.1"
+    id("fabric-loom") version "1.10.5"
 }
 
 val modId: String by extra
@@ -27,8 +27,8 @@ dependencies {
     modImplementation(group = "net.fabricmc", name = "fabric-loader", version = fabricLoaderVersion)
     modImplementation(group = "net.fabricmc.fabric-api", name = "fabric-api", version = fabricVersion)
 
-    implementation(group = "com.google.code.findbugs", name = "jsr305", version = "3.0.1")
-    implementation(group = "org.jetbrains", name = "annotations", version = "23.0.0")
+    implementation(group = "com.google.code.findbugs", name = "jsr305", version = "3.0.2")
+    implementation(group = "org.jetbrains", name = "annotations", version = "26.0.2")
 
     annotationProcessor(group = "systems.manifold", name = "manifold-preprocessor", version = modManifoldVersion)
 

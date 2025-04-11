@@ -2,8 +2,9 @@ package com.alcatrazescapee.cyanide.mixin.accessor;
 
 import java.util.Optional;
 import java.util.function.Function;
+
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistrationInfo;
-import net.minecraft.core.Registry;
 import net.minecraft.core.WritableRegistry;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.resources.RegistryOps;
@@ -26,7 +27,7 @@ public interface RegistryDataLoaderAccessor
     }
 
     @Invoker("createInfoForContextRegistry")
-    static <T> RegistryOps.RegistryInfo<T> invoke$createInfoForContextRegistry(Registry<T> registry)
+    static <T> RegistryOps.RegistryInfo<T> invoke$createInfoForContextRegistry(HolderLookup.RegistryLookup<T> registryLookup)
     {
         throw new AssertionError();
     }

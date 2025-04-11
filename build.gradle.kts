@@ -18,7 +18,7 @@ val fabricVersion: String by extra
 val fabricLoaderVersion: String by extra
 
 plugins {
-    id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.7"
+    id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.10"
 }
 
 subprojects {
@@ -37,10 +37,6 @@ subprojects {
         exclusiveContent {
             forRepository { maven("https://cursemaven.com") }
             filter { includeGroup("curse.maven") }
-        }
-        exclusiveContent {
-            forRepository { maven("https://oss.sonatype.org/content/repositories/snapshots/") }
-            filter { includeGroup("systems.manifold") }
         }
     }
 

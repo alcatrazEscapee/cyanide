@@ -1,5 +1,5 @@
 plugins {
-    id("net.neoforged.moddev") version "0.1.112"
+    id("net.neoforged.moddev") version "2.0.78"
 }
 
 val parchmentMinecraftVersion: String by extra
@@ -8,14 +8,14 @@ val modNeoFormVersion: String by extra
 val modManifoldVersion: String by extra
 
 dependencies {
-    compileOnly(group = "org.spongepowered", name = "mixin", version = "0.8.5")
-    compileOnly(group = "io.github.llamalad7", name = "mixinextras-common", version = "0.3.5")
-    annotationProcessor(group = "io.github.llamalad7", name = "mixinextras-common", version = "0.3.5")
+    compileOnly(group = "org.spongepowered", name = "mixin", version = "0.8.7")
+    compileOnly(group = "io.github.llamalad7", name = "mixinextras-common", version = "0.4.1")
+    annotationProcessor(group = "io.github.llamalad7", name = "mixinextras-common", version = "0.4.1")
     annotationProcessor(group = "systems.manifold", name = "manifold-preprocessor", version = modManifoldVersion)
 }
 
 neoForge {
-    neoFormVersion.set(modNeoFormVersion)
+    neoFormVersion = modNeoFormVersion
 
     parchment {
         minecraftVersion.set(parchmentMinecraftVersion)
